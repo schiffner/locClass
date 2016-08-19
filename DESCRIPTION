@@ -1,0 +1,74 @@
+Package: locClass
+Version: 0.3-1
+Date: 2016-08-19
+Title: Collection of Local Classification Methods
+Authors@R: c(person("Schiffner", "Julia", role = c("aut", "cre"),
+    email = "schiffner@math.uni-duesseldorf.de"),
+    person("Hillebrand", "Stefanie", role = c("ctb")))
+Author: Julia Schiffner [aut, cre],
+    Stefanie Hillebrand [ctb]
+Maintainer: Julia Schiffner <schiffner@math.uni-duesseldorf.de>
+Depends:
+    R (>= 3.1.0),
+    methods,
+    flexmix,
+    party
+Imports:
+    stats,
+    nnet,
+    e1071,
+    mvtnorm,
+    sandwich
+Suggests:
+    mlbench,
+    klaR,
+    MASS,
+    Matrix,
+    SparseM,
+    benchData
+Description: Collection of diverse local classification methods such as local
+    versions of linear and quadratic discriminant analysis, logistic regression,
+    neural networks and support vector machines.
+License: GPL (>=2)
+URL: https://github.com/schiffner/locClass
+Collate:
+    'FLXMCL.R'
+    'FLXMCLlda.R'
+    'FLXMCLmajority.R'
+    'FLXMCLmajorityGenerative.R'
+    'FLXMCLmultinom.R'
+    'FLXMCLnnet.R'
+    'FLXMCLqda.R'
+    'FLXMCLsvm.R'
+    'FLXP.R'
+    'FLXPwlda.R'
+    'Model_lda.R'
+    'Model_majority.R'
+    'Model_multinom.R'
+    'Model_nnet.R'
+    'Model_qda.R'
+    'Model_svm.R'
+    'checkwf.R'
+    'dalda.R'
+    'dalr.R'
+    'damultinom.R'
+    'dannet.R'
+    'daqda.R'
+    'dasvm.R'
+    'flexmixPenalized.R'
+    'generatewf.R'
+    'kda.R'
+    'kmc.R'
+    'majority.R'
+    'majorityGenerative.R'
+    'myStepFlexmix.R'
+    'nnetRep.R'
+    'oslda.R'
+    'osmultinom.R'
+    'osnnet.R'
+    'osqda.R'
+    'ossvm.R'
+    'wlda.R'
+    'wqda.R'
+    'wsvm.R'
+RoxygenNote: 5.0.1
