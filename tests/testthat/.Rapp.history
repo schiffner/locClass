@@ -1,2677 +1,0 @@
-ran <- sample(1:150,100)#
-	cluster <- kmeans(iris[ran,1:4], centers = 2)$cluster#
-	tr2 <- flexmix(Species ~ Sepal.Length + Sepal.Width, data = iris[ran,], concomitant = FLXPwlda(~ Sepal.Width + Petal.Width), model = FLXMCLnnet(size = 1), cluster = cluster, control = list(iter.max = 200))#
-#
-	## NAs in explanatory variables are ok#
-	irisna <- iris#
-	irisna[1:17,c(1,3)] <- NA#
-	expect_error(pred <- mypredict(tr2, newdata = irisna))#
-	expect_error(pred <- mypredict(tr2, newdata = irisna, aggregate = TRUE))#
-	## NAs in splitting variable are not ok if aggregation is desired#
-	irisna[1:17,1:3] <- NA#
-	expect_error(pred <- mypredict(tr2, newdata = irisna))#
-	expect_error(pred <- mypredict(tr2, newdata = irisna, aggregate = TRUE))
-ran <- sample(1:150,100)#
-	cluster <- kmeans(iris[ran,1:4], centers = 2)$cluster#
-	tr2 <- flexmix(Species ~ Sepal.Width + Petal.Width, data = iris[ran,], concomitant = FLXPwlda(~ Sepal.Width + Petal.Width), model = FLXMCLnnet(size = 1), cluster = cluster, control = list(iter.max = 200))#
-    # errors in newdata#
-    expect_error(mypredict(tr2, newdata = TRUE))#
-    expect_error(mypredict(tr2, newdata = -50:50))
-cluster <- kmeans(iris[,1:4], centers = 3)$cluster#
-	tr2 <- flexmix(Petal.Width ~ Petal.Length + Sepal.Length, data = iris, concomitant = FLXPwlda(~ Petal.Length + Sepal.Length), model = FLXMCLnnet(), cluster = cluster, control = list(iter.max = 200, classify = "hard"))  ## gibt fehler in S4?
-nnet:::nnet.default
-nnet
-nnet:::nnet.formula
-FLXMCLnnet <- function(formula = . ~ ., ...) {#
-	z <- new("FLXMCLnnet", weighted = TRUE, formula = formula,#
-		name = "Mixture of nnet models")#
-	z@defineComponent <- expression({#
-		predict <- function(x, ...) {#
-			post <- getS3method("predict", "nnet")(fit, newdata = x, type = "raw", ...)#
-			if (ncol(post) == 1) {#
-				post <- cbind(1-post, post)#
-				colnames(post) <- fit$lev#
-			}#
-			return(post)#
-		}#
-		logLik <- function(x, y, ...) {#
-    		# post <- getS3method("predict", "nnet")(fit, newdata = x, type = "raw", ...)#
-    		post <- fitted(fit)#
-# print(head(post))#
-# print(head(y))#
-			n <- nrow(post)#
-			if (ncol(post) == 1) {#
-				post <- cbind(1-post, post)#
-    			ll <- post[cbind(1:n, y + 1)] # y in {0,1}; y == 1 iff second level, 0 otherwise#
-			} else {#
-    			ll <- t(post)[as.logical(t(y))]#
-			}#
-	    	ll <- ifelse(ll == 0, -10000, log(ll))#
-			return(ll)#
-		}#
-		new("FLXcomponent", parameters = list(wts = fit$wts), #
-			logLik = logLik, predict = predict, df = fit$df)#
-	})#
-	z@preproc.y <- function(y) { # y results from model response#
-    	class.ind <- function(cl) {#
-        	n <- length(cl)#
-        	x <- matrix(0, n, length(levels(cl)))#
-        	x[(1L:n) + n * (as.vector(unclass(cl)) - 1L)] <- 1#
-        	dimnames(x) <- list(names(cl), levels(cl))#
-        	x#
-    	}#
-    	if (is.factor(y)) {#
-        	lev <- levels(y)#
-        	counts <- table(y)#
-        	if (any(counts == 0L)) {#
-            	empty <- lev[counts == 0L]#
-            	warning(sprintf(ngettext(length(empty), "group %s is empty", #
-                	"groups %s are empty"), paste(empty, collapse = " ")), #
-                	domain = NA)#
-            	y <- factor(y, levels = lev[counts > 0L])#
-        	}#
-        	if (length(lev) == 2L) { ### wirklich lev oder lev[counts > 0]#
-            	y <- as.matrix(unclass(y)) - 1 ## original: as.vector#
-            	attr(y, "lev") <- lev#
-            	attr(y, "entropy") <- TRUE#
-            	attr(y, "softmax") <- FALSE#
-        	}#
-        	else {#
-            	y <- class.ind(y)#
-            	attr(y, "lev") <- lev#
-            	attr(y, "entropy") <- FALSE#
-            	attr(y, "softmax") <- TRUE#
-        	}#
-    	} else {#
-    		y <- as.matrix(y)#
-    	}#
-    	return(y)#
-	}#
-	z@fit <- function(x, y, w) {#
-		lev <- attr(y, "lev")#
-#print(lev)#
-		if (is.null(lev)) {#
-			fit <- nnet(x, y, weights = w, ...)#
-		} else {#
-			fit <- nnet(x, y, weights = w, entropy = attr(y, "entropy"), softmax = attr(y, "softmax"), ...)#
-			fit$lev <- lev#
-		}			#
-		fit$df <- length(fit$wts)#
-		with(fit, eval(z@defineComponent))#
-	}#
-	z#
-}
-cluster <- kmeans(iris[,1:4], centers = 3)$cluster#
-	tr2 <- flexmix(Petal.Width ~ Petal.Length + Sepal.Length, data = iris, concomitant = FLXPwlda(~ Petal.Length + Sepal.Length), model = FLXMCLnnet(), cluster = cluster, control = list(iter.max = 200, classify = "hard"))  ## gibt fehler in S4?
-cluster <- kmeans(iris[,1:4], centers = 3)$cluster#
-	tr2 <- flexmix(Petal.Width ~ Petal.Length + Sepal.Length, data = iris, concomitant = FLXPwlda(~ Petal.Length + Sepal.Length), model = FLXMCLnnet(size = 1), cluster = cluster, control = list(iter.max = 200, classify = "hard"))  ## gibt fehler in S4?
-options(error = recover)
-cluster <- kmeans(iris[,1:4], centers = 3)$cluster#
-	tr2 <- flexmix(Petal.Width ~ Petal.Length + Sepal.Length, data = iris, concomitant = FLXPwlda(~ Petal.Length + Sepal.Length), model = FLXMCLnnet(size = 1), cluster = cluster, control = list(iter.max = 200, classify = "hard"))  ## gibt fehler in S4?
-ls()
-str(post)
-print(n)
-y
-FLXMCLnnet <- function(formula = . ~ ., ...) {#
-	z <- new("FLXMCLnnet", weighted = TRUE, formula = formula,#
-		name = "Mixture of nnet models")#
-	z@defineComponent <- expression({#
-		predict <- function(x, ...) {#
-			post <- getS3method("predict", "nnet")(fit, newdata = x, type = "raw", ...)#
-			if (ncol(post) == 1) {#
-				post <- cbind(1-post, post)#
-				colnames(post) <- fit$lev#
-			}#
-			return(post)#
-		}#
-		logLik <- function(x, y, ...) {#
-    		# post <- getS3method("predict", "nnet")(fit, newdata = x, type = "raw", ...)#
-    		post <- fitted(fit)#
-# print(head(post))#
-# print(head(y))#
-			n <- nrow(post)#
-			if (ncol(post) == 1) {#
-				post <- cbind(1-post, post)#
-    			ll <- post[cbind(1:n, y + 1)] # y in {0,1}; y == 1 iff second level, 0 otherwise#
-			} else {#
-    			ll <- t(post)[as.logical(t(y))]#
-			}#
-	    	ll <- ifelse(ll == 0, -10000, log(ll))#
-			return(ll)#
-		}#
-		new("FLXcomponent", parameters = list(wts = fit$wts), #
-			logLik = logLik, predict = predict, df = fit$df)#
-	})#
-	z@preproc.y <- function(y) { # y results from model response#
-    	class.ind <- function(cl) {#
-        	n <- length(cl)#
-        	x <- matrix(0, n, length(levels(cl)))#
-        	x[(1L:n) + n * (as.vector(unclass(cl)) - 1L)] <- 1#
-        	dimnames(x) <- list(names(cl), levels(cl))#
-        	x#
-    	}#
-    	if (!is.factor(y))#
-    		warning("currently only classification is supported, 'y' was coerced to a factor")#
-    	y <- as.factor(y)#
-    	# if (is.factor(y)) {#
-        	lev <- levels(y)#
-        	counts <- table(y)#
-        	if (any(counts == 0L)) {#
-            	empty <- lev[counts == 0L]#
-            	warning(sprintf(ngettext(length(empty), "group %s is empty", #
-                	"groups %s are empty"), paste(empty, collapse = " ")), #
-                	domain = NA)#
-            	y <- factor(y, levels = lev[counts > 0L])#
-        	}#
-        	if (length(lev) == 2L) { ### wirklich lev oder lev[counts > 0]#
-            	y <- as.matrix(unclass(y)) - 1 ## original: as.vector#
-            	attr(y, "lev") <- lev#
-            	attr(y, "entropy") <- TRUE#
-            	attr(y, "softmax") <- FALSE#
-        	}#
-        	else {#
-            	y <- class.ind(y)#
-            	attr(y, "lev") <- lev#
-            	attr(y, "entropy") <- FALSE#
-            	attr(y, "softmax") <- TRUE#
-        	}#
-    	# }#
-    	return(y)#
-	}#
-	z@fit <- function(x, y, w) {#
-		lev <- attr(y, "lev")#
-#print(lev)#
-		if (is.null(lev)) {#
-			fit <- nnet(x, y, weights = w, ...)#
-		} else {#
-			fit <- nnet(x, y, weights = w, entropy = attr(y, "entropy"), softmax = attr(y, "softmax"), ...)#
-			fit$lev <- lev#
-		}			#
-		fit$df <- length(fit$wts)#
-		with(fit, eval(z@defineComponent))#
-	}#
-	z#
-}
-cluster <- kmeans(iris[,1:4], centers = 3)$cluster#
-	tr2 <- flexmix(Petal.Width ~ Petal.Length + Sepal.Length, data = iris, concomitant = FLXPwlda(~ Petal.Length + Sepal.Length), model = FLXMCLnnet(size = 1), cluster = cluster, control = list(iter.max = 200, classify = "hard"))  ## gibt fehler in S4?
-cluster <- kmeans(iris[,1:4], centers = 3)$cluster#
-	tr2 <- flexmix(Petal.Width ~ Petal.Length + Sepal.Length, data = iris, concomitant = FLXPwlda(~ Petal.Length + Sepal.Length), model = FLXMCLnnet(size = 1, trace = FALSE), cluster = cluster, control = list(iter.max = 200, classify = "hard"))  ## gibt fehler in S4?#
-	## no warning
-cluster <- kmeans(iris[,1:4], centers = 3)$cluster#
-	expect_that(tr2 <- flexmix(Petal.Width ~ Petal.Length + Sepal.Length, data = iris, concomitant = FLXPwlda(~ Petal.Length + Sepal.Length), model = FLXMCLnnet(size = 1, trace = FALSE), cluster = cluster, control = list(iter.max = 200, classify = "hard")), gives_warning("currently only classification is supported, 'y' was coerced to a factor"))
-library(nnet)	#
-	m <- nnet(Species ~ Sepal.Width, data = iris[1:100,], size = 2)#
-	y <- fit@model[[1]]@y#
-	expect_equal(ncol(y),2)#
-	# expect_true(!attr(y, "is.matrix"))#
-	expect_equal(attr(y, "softmax"), m$softmax)#
-	expect_equal(attr(y, "entropy"), m$entropy)#
-	# x <- fit@model[[1]]@x#
-	# expect_true(all(m$wts[!attr(x, "mask")] == 0))
-library(nnet)	#
-	m <- nnet(Species ~ Sepal.Width, data = iris[1:100,], size = 2)#
-	y <- fit@model[[1]]@y
-y
-data(iris)
-library(nnet)	#
-	m <- nnet(Species ~ Sepal.Width, data = iris[1:100,], size = 2)#
-	y <- fit@model[[1]]@y
-y
-str(iris)
-2 classes#
-	cluster <- kmeans(iris[1:100,1:4], centers = 2)$cluster#
-	fit <- flexmix(Species ~ Sepal.Width, data = iris[1:100,], concomitant = FLXPwlda(~ Sepal.Length), model = FLXMCLnnet(size = 2), cluster = cluster, control = list(iter.max = 200, classify = "hard", verb = 1))
-library(nnet)	#
-	m <- nnet(Species ~ Sepal.Width, data = iris[1:100,], size = 2)
-m
-fit@model[[1]]
-fit@model[[1]]@y
-expect_equal(ncol(y),2)
-cluster <- kmeans(iris[1:100,1:4], centers = 2)$cluster#
-	fit <- flexmix(Species ~ Sepal.Width, data = iris[1:100,], concomitant = FLXPwlda(~ Sepal.Length), model = FLXMCLnnet(size = 2), cluster = cluster, control = list(iter.max = 200, classify = "hard", verb = 1))#
-	library(nnet)	#
-	m <- nnet(Species ~ Sepal.Width, data = iris[1:100,], size = 2)#
-	y <- fit@model[[1]]@y#
-	expect_equal(ncol(y),2)
-expect_true(!attr(y, "is.matrix"))#
-	expect_equal(attr(y, "softmax"), m$softmax)#
-	expect_equal(attr(y, "entropy"), m$entropy)
-cluster <- kmeans(iris[,1:4], centers = 2)$cluster#
-	fit <- flexmix(Species ~ Sepal.Width, data = iris, concomitant = FLXPmultinom(~ Sepal.Length), model = FLXMCLnnet(size = 1), cluster = cluster, control = list(iter.max = 200, classify = "hard", verb = 1))#
-	m <- nnet(Species ~ Sepal.Width, data = iris, size = 1)#
-	y <- fit@model[[1]]@y#
-	expect_equal(ncol(y),3)
-y <- fit@model[[1]]@y#
-	expect_equal(ncol(y),3)#
-	# expect_true(attr(y, "is.matrix"))#
-	expect_equal(attr(y, "softmax"), m$softmax)#
-	expect_equal(attr(y, "entropy"), m$entropy)#
-	# x <- fit@model[[1]]@x
-iris$Species <- as.numeric(iris$Species)#
-	cluster <- kmeans(iris[,1:4], centers = 2)$cluster#
-	fit <- flexmix(Species ~ Sepal.Width, data = iris, concomitant = FLXPwlda(~ Sepal.Length), model = FLXMCLnnet(size = 1), cluster = cluster, control = list(iter.max = 200, classify = "hard")) #FEHLER
-iris$Species <- as.numeric(iris$Species)#
-	cluster <- kmeans(iris[,1:4], centers = 2)$cluster#
-	expect_that(fit <- flexmix(Species ~ Sepal.Width, data = iris, concomitant = FLXPwlda(~ Sepal.Length), model = FLXMCLnnet(size = 1), cluster = cluster, control = list(iter.max = 200, classify = "hard")), gives_warning("currently only classification is supported, 'y' was coerced to a factor"))#
-	m <- nnet(Species ~ Sepal.Width, data = iris, size = 1)#
-	y <- fit@model[[1]]@y#
-	expect_equal(ncol(y),3)#
-	expect_equal(attr(y, "softmax"), m$softmax)#
-	expect_equal(attr(y, "entropy"), m$entropy)
-m$softmax
-attr(y, "softmax")
-iris$Species <- as.numeric(iris$Species)#
-	cluster <- kmeans(iris[,1:4], centers = 2)$cluster#
-	expect_that(fit <- flexmix(Species ~ Sepal.Width, data = iris, concomitant = FLXPwlda(~ Sepal.Length), model = FLXMCLnnet(size = 1), cluster = cluster, control = list(iter.max = 200, classify = "hard")), gives_warning("currently only classification is supported, 'y' was coerced to a factor"))#
-	m <- nnet(Species ~ Sepal.Width, data = iris, size = 1)
-m
-str(m)
-nnet:::nnet.formula
-data(iris)#
-#
-m <- nnet(Species ~ . , data = iris[c(1:50,101:150),], size = 1)
-predict(m)
-cluster <- kmeans(iris[,1:4], centers = 2)$cluster#
-fit <- flexmix(Species ~ ., data = iris[c(1:50,101:150),], concomitant = FLXPwlda(~ Sepal.Length), model = FLXMCLnnet(size = 1), cluster = cluster, control = list(iter.max = 200, classify = "hard", verb = 1))
-cluster <- kmeans(iris[c(1:50,101:150),1:4], centers = 2)$cluster#
-fit <- flexmix(Species ~ ., data = iris[c(1:50,101:150),], concomitant = FLXPwlda(~ Sepal.Length), model = FLXMCLnnet(size = 1), cluster = cluster, control = list(iter.max = 200, classify = "hard", verb = 1))
-predict(fit)
-p <- mypredict(fit, aggregate = TRUE)
-str(p)
-p <- mypredict(fit, aggregate = TRUE)[[1]]
-p = factor(colnames(p)[max.col(p)], levels = levels(iris$Species)) ## does this always work?
-p
-data(iris)#
-#
-m <- nnet(Species ~ . , data = iris[c(1:50,101:150),], size = 1)#
-predict(m)
-cluster <- kmeans(iris[c(1:50,101:150),1:4], centers = 2)$cluster#
-fit <- flexmix(Species ~ ., data = iris[c(1:50,101:150),], model = FLXMCLnnet(size = 1), cluster = 1, control = list(iter.max = 200, classify = "hard", verb = 1))
-p <- mypredict(fit, aggregate = TRUE)[[1]]
-str(p)
-factor(colnames(p)[max.col(p)], levels = levels(iris$Species)) ## does this always work?
-p
-data(iris)#
-#
-m <- nnet(Species ~ . , data = iris[c(1:50,101:150),], size = 1)#
-predict(m)#
-#cluster <- kmeans(iris[c(1:50,101:150),1:4], centers = 2)$cluster#
-fit <- flexmix(Species ~ ., data = iris[c(1:50,101:150),], model = FLXMCLnnet(size = 1), cluster = 1, control = list(iter.max = 200, classify = "hard", verb = 1))
-p <- mypredict(fit, aggregate = TRUE)[[1]]
-p
-factor(colnames(p)[max.col(p)], levels = levels(iris$Species)) ## does this always work?
-nnet(Species ~ ., data = iris[1:50,], size = 1)
-ls()
-y
-c
-nnet:::nnet.default
-nnet:::nnet.formula
-nnet(Species ~ ., data = iris, weights = c(rep(1,100), rep(0,50)))
-nnet(Species ~ ., data = iris, weights = c(rep(1,100), rep(0,50)), size = 1)
-m <- nnet(Species ~ ., data = iris, weights = c(rep(1,100), rep(0,50)), size = 1)
-predict(m)
-nnet:::nnet.default
-nnet:::predict.nnet
-?predict.nnet
-nnet:::nnet.default
-nnet(Petal.Width ~ Sepal.Width, data = iris, size = 1)
-m <- nnet(Petal.Width ~ Sepal.Width, data = iris, size = 1)
-str(m)
-?nnet
-wrong variable names#
-	cluster <- kmeans(iris[,1:4], centers = 3)$cluster#
-	expect_that(fit <- flexmix(Species ~ V1, data = iris, concomitant = FLXPwlda(~ Sepal.Length), model = FLXMCLsvm(kernel = "linear", fitted = FALSE), cluster = cluster, control = list(iter.max = 200, classify = "hard")), throws_error("Objekt 'V1' nicht gefunden"))
-library(locClass)
-library(testthat)
-wrong variable names#
-	cluster <- kmeans(iris[,1:4], centers = 3)$cluster#
-	expect_that(fit <- flexmix(Species ~ V1, data = iris, concomitant = FLXPwlda(~ Sepal.Length), model = FLXMCLsvm(kernel = "linear", fitted = FALSE), cluster = cluster, control = list(iter.max = 200, classify = "hard")), throws_error("Objekt 'V1' nicht gefunden"))
-fit <- flexmix(Species ~ V1, data = iris, concomitant = FLXPwlda(~ Sepal.Length), model = FLXMCLsvm(kernel = "linear", fitted = FALSE), cluster = cluster, control = list(iter.max = 200, classify = "hard"))
-expect_that(fit <- flexmix(Species ~ Sepal.Length, data = iris, concomitant = FLXPwlda(~ V1), model = FLXMCLsvm(kernel = "linear", fitted = FALSE), cluster = cluster, control = list(iter.max = 200, classify = "hard")), throws_error("Objekt 'V1' nicht gefunden"))
-expect_that(fit <- flexmix(y ~ Sepal.Length, data = iris, concomitant = FLXPwlda(~ Sepal.Width), model = FLXMCLsvm(kernel = "linear", fitted = FALSE), cluster = cluster, control = list(iter.max = 200, classify = "hard")), throws_error("Objekt 'y' nicht gefunden"))
-expect_error(fit <- flexmix(iris, data = iris, concomitant = FLXPwlda(~ Sepal.Width), model = FLXMCLsvm(kernel = "linear", fitted = FALSE), cluster = cluster, control = list(iter.max = 200, classify = "hard")))
-fit <- flexmix(iris, data = iris, concomitant = FLXPwlda(~ Sepal.Width), model = FLXMCLsvm(kernel = "linear", fitted = FALSE), cluster = cluster, control = list(iter.max = 200, classify = "hard"))
-iris$Species <- as.numeric(iris$Species)#
-	cluster <- kmeans(iris[,c(1,3)], centers = 2)$cluster#
-	expect_that(tr2 <- flexmix(Species ~ Sepal.Length, data = iris, concomitant = FLXPwlda(~ Petal.Length + Sepal.Length), model = FLXMCLsvm(kernel = "linear", fitted = FALSE), cluster = cluster, control = list(iter.max = 200, classify = "weighted")), gives_warning("'grouping' was coerced to a factor"))
-tr2 <- flexmix(Species ~ Sepal.Length, data = iris, concomitant = FLXPwlda(~ Petal.Length + Sepal.Length), model = FLXMCLsvm(kernel = "linear", fitted = FALSE), cluster = cluster, control = list(iter.max = 200, classify = "weighted"))
-cluster <- kmeans(iris[,1:4], centers = 2)$cluster#
-	fit <- flexmix(Species ~ Sepal.Width, data = iris, concomitant = FLXPwlda(~ Sepal.Length), model = FLXMCLsvm(kernel = "linear", fitted = FALSE), cluster = cluster, control = list(iter.max = 200, classify = "weighted"))
-data(iris)
-cluster <- kmeans(iris[,1:4], centers = 2)$cluster#
-	fit <- flexmix(Species ~ Sepal.Width, data = iris, concomitant = FLXPwlda(~ Sepal.Length), model = FLXMCLsvm(kernel = "linear", fitted = FALSE), cluster = cluster, control = list(iter.max = 200, classify = "weighted"))
-options(error = recover)
-cluster <- kmeans(iris[,1:4], centers = 2)$cluster#
-	fit <- flexmix(Species ~ Sepal.Width, data = iris, concomitant = FLXPwlda(~ Sepal.Length), model = FLXMCLsvm(kernel = "linear", fitted = FALSE), cluster = cluster, control = list(iter.max = 200, classify = "weighted"))
-ls()
-str(y)
-as.numeric(y)
-c
-y
-f <- as.factor(y, levels = attr(y, "lev"))
-f <- factor(y, levels = attr(y, "lev"))
-f
-as.numeric(f)
-c
-data(iris)
-cluster <- kmeans(iris[,1:4], centers = 2)$cluster#
-	fit <- flexmix(Species ~ Sepal.Width, data = iris, concomitant = FLXPwlda(~ Sepal.Length), model = FLXMCLsvm(kernel = "linear", fitted = FALSE), cluster = cluster, control = list(iter.max = 200, classify = "weighted"))
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_FLXMCLmultinom.R")
-library(testthat)
-library(locClass)
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_FLXMCLmultinom.R")
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_FLXMCLnnet.R")
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_wsvm.R")
-data(iris)#
-	## y factor#
-	expect_that(wsvm(Species ~ ., data = iris, subset = 1:50), throws_error("need training data from at least two classes"))
-expect_that(wsvm(y = iris$Species, x = iris[,-5], subset = 1:50), throws_error("need training data from at least two classes"))
-irisint <- iris#
-	irisint$Species <- as.numeric(irisint$Species)#
-	expect_that(wsvm(Species ~ ., data = irisint, subset = 1:50, type = "C-classification"), throws_error("need training data from at least two classes"))
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/R/wsvm.R")
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_wsvm.R")
-warnings()
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_wsvm.R")
-data(iris)#
-	ran <- sample(1:150,100)#
-	## formula, data#
-	fit <- dannet(formula = Species ~ ., data = iris, wf = "gaussian", bw = 2, subset = ran, size = 2, trace = FALSE)#
-	print(fit)
-wrong variable names#
-	expect_that(mob(Species ~ V1 | Sepal.Length, data = iris, model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 20)), throws_error("Objekt 'V1' nicht gefunden"))#
-	expect_that(mob(Species ~ Sepal.Length | V1, data = iris, model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 20)), throws_error("Objekt 'V1' nicht gefunden"))#
-	expect_that(mob(y ~ Sepal.Length | Sepal.Width, data = iris, model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 20)), throws_error("Objekt 'y' nicht gefunden"))#
-	# wrong class#
-	expect_error(mob(iris, data = iris, model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 20)))
-library(testthat)
-library(locClass)
-wrong variable names#
-	expect_that(mob(Species ~ V1 | Sepal.Length, data = iris, model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 20)), throws_error("Objekt 'V1' nicht gefunden"))#
-	expect_that(mob(Species ~ Sepal.Length | V1, data = iris, model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 20)), throws_error("Objekt 'V1' nicht gefunden"))#
-	expect_that(mob(y ~ Sepal.Length | Sepal.Width, data = iris, model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 20)), throws_error("Objekt 'y' nicht gefunden"))#
-	# wrong class#
-	expect_error(mob(iris, data = iris, model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 20)))
-test_that("binary problem", {#
-	library(locClassData)#
-	data <- vData(500)#
-	fit <- mob(y ~ x.1 + x.2 | x.1 + x.2, data = data, model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 50))#
-	tr <- mean(predict(fit) != data$y)#
-	ba <- mean(vBayesClass(data$x) != data$y)#
-	expect_true(tr < ba + 0.05)	#
-})
-test_that("multi-class problem", {#
-	library(locClassData)#
-	data <- xor3Data(1000)#
-	fit <- mob(y ~ x.1 + x.2 | x.1 + x.2, data = data, model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 50))#
-	tr <- mean(predict(fit) != data$y)#
-	ba <- mean(xor3BayesClass(data$x) != data$y)#
-	expect_true(tr < ba + 0.05)	#
-## does not work for xor problem !!!#
-})
-irisscale <- iris#
-	irisscale[,1:4] <- scale(iris[,1:4], sapply(iris[,1:4], min), scale = sapply(iris[,1:4], max) - sapply(iris[,1:4], min))#
-	# wrong variable names#
-	expect_error(mob(Species ~ V1 | Sepal.Length, data = irisscale, model = multinomModel, trace = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20)))#
-	expect_error(mob(Species ~ Sepal.Length | V1, data = irisscale, model = multinomModel, trace = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20)))#
-	expect_error(mob(y ~ Sepal.Length | Sepal.Width, data = irisscale, model = multinomModel, trace = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20)))#
-	# wrong class#
-	expect_error(mob(iris, data = irisscale, model = multinomModel,#
-		control = mob_control(objfun = deviance, minsplit = 20)))#
-	# target variable also in x#
-	# expect_error(mob(Species ~ Species + Sepal.Length | Sepal.Width, data = iris, model = multinomModel, trace = FALSE,#
-	#	control = mob_control(objfun = deviance, minsplit = 20)))	## funktioniert, sollte aber nicht
-test_that("mobMultinomModel: misspecified arguments", {#
-	irisscale <- iris#
-	irisscale[,1:4] <- scale(iris[,1:4], sapply(iris[,1:4], min), scale = sapply(iris[,1:4], max) - sapply(iris[,1:4], min))#
-	# wrong variable names#
-	expect_error(mob(Species ~ V1 | Sepal.Length, data = irisscale, model = multinomModel, trace = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20)))#
-	expect_error(mob(Species ~ Sepal.Length | V1, data = irisscale, model = multinomModel, trace = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20)))#
-	expect_error(mob(y ~ Sepal.Length | Sepal.Width, data = irisscale, model = multinomModel, trace = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20)))#
-	# wrong class#
-	expect_error(mob(iris, data = irisscale, model = multinomModel,#
-		control = mob_control(objfun = deviance, minsplit = 20)))#
-	# target variable also in x#
-	# expect_error(mob(Species ~ Species + Sepal.Length | Sepal.Width, data = iris, model = multinomModel, trace = FALSE,#
-	#	control = mob_control(objfun = deviance, minsplit = 20)))	## funktioniert, sollte aber nicht#
-})
-test_that("binary problem", {#
-	library(locClassData)#
-	data <- vData(500)#
-	## decay = 0#
-	fit <- mob(y ~ x.1 + x.2 | x.1 + x.2, data = data, model = multinomModel, trace = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 200))#
-	tr <- mean(predict(fit) != data$y)#
-	ba <- mean(vBayesClass(data$x) != data$y)#
-	expect_true(tr < ba + 0.05)#
-	## gradient#
-	pr <- predict(fit, out = "posterior")#
-	pr <- sapply(pr, function(x) x[,2])#
-	y <-  unclass(data$y) - 1#
-	delta <- pr - y#
-	splits <- predict(fit, type = "node")#
-	S <- unique(splits)#
-	for (s in S) {#
-		gr1 <- (delta * cbind(1, data$x))[splits == s,]#
-		gr2 <- nodes(fit, s)[[1]]$model$gradient[splits == s,]#
-		expect_equal(gr1, gr2)#
-	}#
-	## decay > 0#
-	decay <- 0.5#
-	fit <- mob(y ~ x.1 + x.2 | x.1 + x.2, data = data, model = multinomModel, trace = FALSE, decay = decay,#
-		control = mob_control(objfun = deviance, minsplit = 200))#
-	tr <- mean(predict(fit) != data$y)#
-	ba <- mean(vBayesClass(data$x) != data$y)#
-	expect_true(tr < ba + 0.05)	#
-	## gradient#
-	pr <- predict(fit, out = "posterior")#
-	pr <- sapply(pr, function(x) x[,2])#
-	y <-  unclass(data$y) - 1#
-	delta <- pr - y#
-	splits <- predict(fit, type = "node")#
-	S <- unique(splits)#
-	for (s in S) {#
-		model <- nodes(fit,s)[[1]]$model#
-		gr1 <- (delta * cbind(1, data$x))[splits == s,]#
-		reg <- 2 * decay/sum(weights(model)) * coef(model)#
-		gr1 <- t(t(gr1) + reg)	#
-		gr2 <- model$gradient[splits == s,]#
-		expect_equal(gr1, gr2)	#
-	}#
-})
-test_that("multi-class problem", {#
-	library(locClassData)#
-	data <- xor3Data(1000)#
-	## decay = 0#
-	fit <- mob(y ~ x.1 + x.2 | x.1 + x.2, data = data, model = multinomModel, trace = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 200))#
-	tr <- mean(predict(fit) != data$y)#
-	ba <- mean(xor3BayesClass(data$x) != data$y)#
-	expect_true(tr < ba + 0.05)#
-	## gradient#
-	pr <- predict(fit, out = "posterior")#
-	pr <- do.call("rbind", pr)#
-	pr <- pr[,-1]#
-	y <- diag(3)		#
-	y <- y[as.numeric(data$y),]#
-	y <- y[,-1]#
-	delta <- pr - y#
-	splits <- predict(fit, type = "node")#
-	S <- unique(splits)#
-	for (s in S) {#
-		gr1 <- (delta[,rep(1:2, each = 3)] * cbind(1, data$x)[,rep(1:3, 2)])[splits == s,]#
-		dimnames(gr1) <- NULL#
-		gr2 <- nodes(fit, s)[[1]]$model$gradient[splits == s,]#
-		expect_equal(gr1, gr2)#
-	}#
-	## decay > 0#
-	decay = 0.5#
-	fit <- mob(y ~ x.1 + x.2 | x.1 + x.2, data = data, model = multinomModel, trace = FALSE, decay = decay,#
-		control = mob_control(objfun = deviance, minsplit = 200))#
-	tr <- mean(predict(fit) != data$y)#
-	ba <- mean(xor3BayesClass(data$x) != data$y)#
-	expect_true(tr < ba + 0.05)	#
-	## gradient#
-	pr <- predict(fit, out = "posterior")#
-	pr <- do.call("rbind", pr)#
-	pr <- pr[,-1]#
-	y <- diag(3)		#
-	y <- y[as.numeric(data$y),]#
-	y <- y[,-1]#
-	delta <- pr - y#
-	splits <- predict(fit, type = "node")#
-	S <- unique(splits)#
-	for (s in S) {#
-		model <- nodes(fit,s)[[1]]$model#
-		gr1 <- (delta[,rep(1:2, each = 3)] * cbind(1, data$x)[,rep(1:3, 2)])[splits == s,]#
-		dimnames(gr1) <- NULL#
-		reg <- as.vector(t(2 * decay/sum(weights(model)) * coef(model)))#
-		gr1 <- t(t(gr1) + reg)	#
-		gr2 <- model$gradient[splits == s,]#
-		expect_equal(gr1, gr2)#
-	}	#
-})
-test_that("mobMultinomModel throws a warning if grouping variable is numeric", {#
-	irisscale <- iris#
-	irisscale[,1:4] <- scale(iris[,1:4], sapply(iris[,1:4], min), scale = sapply(iris[,1:4], max) - sapply(iris[,1:4], min))#
-	fit <- mob(Petal.Width ~ . | Sepal.Length, data = irisscale, model = multinomModel, trace = TRUE, decay = 0.5,#
-		control = mob_control(objfun = deviance, minsplit = 20)) #
-})#
-test_that("mobMultinomModel works if only one predictor variable is given", {#
-	irisscale <- iris#
-	irisscale[,1:4] <- scale(iris[,1:4], sapply(iris[,1:4], min), scale = sapply(iris[,1:4], max) - sapply(iris[,1:4], min))#
-	fit <- mob(Species ~ Sepal.Width | Sepal.Length, data = irisscale, model = multinomModel, trace = TRUE,#
-		control = mob_control(objfun = deviance, minsplit = 20))#
-	terminal <- nodes(fit, max(where(fit)))#
-	expect_equal(terminal[[1]]$model$coefnames, c("(Intercept)", "Sepal.Width"))#
-})
-test_that("mobMultinomModel throws a warning if grouping variable is numeric", {#
-	irisscale <- iris#
-	irisscale[,1:4] <- scale(iris[,1:4], sapply(iris[,1:4], min), scale = sapply(iris[,1:4], max) - sapply(iris[,1:4], min))#
-	fit <- mob(Petal.Width ~ . | Sepal.Length, data = irisscale, model = multinomModel, trace = FALSE, decay = 0.5,#
-		control = mob_control(objfun = deviance, minsplit = 20)) #
-})#
-test_that("mobMultinomModel works if only one predictor variable is given", {#
-	irisscale <- iris#
-	irisscale[,1:4] <- scale(iris[,1:4], sapply(iris[,1:4], min), scale = sapply(iris[,1:4], max) - sapply(iris[,1:4], min))#
-	fit <- mob(Species ~ Sepal.Width | Sepal.Length, data = irisscale, model = multinomModel, trace = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20))#
-	terminal <- nodes(fit, max(where(fit)))#
-	expect_equal(terminal[[1]]$model$coefnames, c("(Intercept)", "Sepal.Width"))#
-})
-test_that("mobMulitnomModel: Local and global solution coincide if minsplit is large", {#
-	library(locClassData)#
-	library(nnet)#
-	data <- vData(500)#
-	fit <- mob(y ~ x.1 + x.2 | x.1 + x.2, data = data, model = multinomModel, trace = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 500))#
-	w <- multinom(y ~ ., data = as.data.frame(data),  trace = FALSE)#
-	expect_equal(fit@tree$model$wts, w$wts)#
-	expect_equal(fit@tree$model$fitted.values, w$fitted.values)#
-	expect_equal(fit@tree$model$deviance, w$deviance)#
-	pred <- predict(fit)#
-	p <- predict(w, newdata = as.data.frame(data))#
-	expect_equal(pred, as.numeric(p))#
-})
-test_that("mobMultinomModel: training data from only one class", {#
-	irisscale <- iris#
-	irisscale[,1:4] <- scale(iris[,1:4], sapply(iris[,1:4], min), scale = sapply(iris[,1:4], max) - sapply(iris[,1:4], min))#
-	expect_that(z <- mob(Species ~ Sepal.Width | Sepal.Length, data = irisscale[1:50,], model = multinomModel, trace = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20)), throws_error("need two or more classes to fit a multinom model"))#
-	## error in global fit#
-})
-test_that("mobMultinomModel: neural network is set up correctly", {#
-	library(nnet)#
-	## categorical target variables#
-	# 2 classes#
-	library(mlbench)#
-	data(Ionosphere)#
-	fit <- mob(Class ~ . | V1, data = Ionosphere[,-2], model = multinomModel, trace = TRUE, Hess = TRUE,#
-		control = mob_control(objfun = deviance, minsplit = 20))#
-	tnodes <- unique(where(fit))#
-	term <- nodes(fit, tnodes[1])	#
-	m <- multinom(Class ~ . , data = Ionosphere[,-2], trace = TRUE, Hess = TRUE)#
-	expect_equal(term[[1]]$model[1:9], m[1:9])#
-	expect_equal(term[[1]]$model[c("lev", "rank", "lab", "coefnames", "vcoefnames")], m[c("lev", "rank", "lab", "coefnames", "vcoefnames")])	#
-	expect_equal(dim(m$Hessian), dim(term[[1]]$model$Hessian))#
-	expect_equal(dimnames(m$Hessian), dimnames(term[[1]]$model$Hessian))#
-	# > 2 classes#
-	irisscale <- iris#
-	irisscale[,1:4] <- scale(iris[,1:4], sapply(iris[,1:4], min), scale = sapply(iris[,1:4], max) - sapply(iris[,1:4], min))#
-	fit <- mob(Species ~ . | Sepal.Length, data = irisscale, model = multinomModel, trace = TRUE, Hess = TRUE,#
-		control = mob_control(objfun = deviance, minsplit = 10))#
-	tnodes <- unique(where(fit))#
-	term <- nodes(fit, tnodes[1])#
-	m <- multinom(Species ~ . , data = irisscale, trace = TRUE, Hess = TRUE)#
-	expect_equal(term[[1]]$model[1:9], m[1:9])#
-	expect_equal(term[[1]]$model[c("lev", "rank", "lab", "coefnames", "vcoefnames")], m[c("lev", "rank", "lab", "coefnames", "vcoefnames")])	#
-	expect_equal(dim(m$Hessian), dim(term[[1]]$model$Hessian))#
-	expect_equal(dimnames(m$Hessian), dimnames(term[[1]]$model$Hessian))#
-#
-	# 1 class missing#
-	fit <- mob(Species ~ . | Sepal.Length, data = irisscale[1:100,], model = multinomModel, trace = TRUE, Hess = TRUE,#
-		control = mob_control(objfun = deviance, minsplit = 20))#
-	tnodes <- unique(where(fit))#
-	term <- nodes(fit, tnodes[1])#
-	m <- multinom(Species ~ . , data = irisscale[1:100,], trace = TRUE, Hess = TRUE)#
-	expect_equal(term[[1]]$model[1:9], m[1:9])#
-	expect_equal(term[[1]]$model[c("lev", "rank", "lab", "coefnames", "vcoefnames")], m[c("lev", "rank", "lab", "coefnames", "vcoefnames")])	#
-	expect_equal(dim(m$Hessian), dim(term[[1]]$model$Hessian))#
-	expect_equal(dimnames(m$Hessian), dimnames(term[[1]]$model$Hessian))#
-#
-	## numeric target variable#
-	data(Glass)#
-	Glassscale <- Glass#
-	Glassscale[,1:9] <- scale(Glass[,1:9], sapply(Glass[,1:9], min), scale = sapply(Glass[,1:9], max) - sapply(Glass[,1:9], min))#
-	fit <- mob(Type ~ . | ., data = Glassscale, model = multinomModel, trace = TRUE, Hess = TRUE, decay = 0.2,#
-		control = mob_control(objfun = deviance, minsplit = 20))#
-	tnodes <- unique(where(fit))#
-	term <- nodes(fit, tnodes[1])#
-	m <- multinom(Type ~ . , data = Glassscale, trace = TRUE, Hess = TRUE, decay = 0.2)#
-	expect_equal(term[[1]]$model[1:9], m[1:9])#
-	expect_equal(term[[1]]$model[c("lev", "rank", "lab", "coefnames", "vcoefnames")], m[c("lev", "rank", "lab", "coefnames", "vcoefnames")])	#
-	expect_equal(dim(m$Hessian), dim(term[[1]]$model$Hessian))#
-	expect_equal(dimnames(m$Hessian), dimnames(term[[1]]$model$Hessian))#
-})
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_mobMultinomModel.R")
-root.matrix
-?root.matrix
-library(testthat)
-library(locClass)
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_dasvm.R")
-context("dasvm")#
-test_that("dasvm: misspecified arguments", {#
-	data(iris)#
-	# wrong variable names#
-	expect_error(dasvm(formula = Species ~ V1, data = iris, wf = "gaussian", bw = 10))#
-	# wrong class#
-	expect_error(dasvm(formula = iris, data = iris, wf = "gaussian", bw = 10))#
-	expect_error(dasvm(iris, data = iris, wf = "gaussian", bw = 10))#
-	# target variable also in x#
-	expect_error(dasvm(y = iris$Species, x = iris, wf = "gaussian", bw = 10))      ### ???#
-	expect_warning(dasvm(Species ~ Species + Petal.Width, data = iris, wf = "gaussian", bw = 10))           ## warning, Species on RHS removed#
-	# missing x#
-	expect_error(dasvm(y = iris$Species, wf = "gaussian", bw = 10))#
-	## itr#
-	expect_that(dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, itr = -5), throws_error("'itr' must be >= 1"))#
-	expect_that(dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, itr = 0), throws_error("'itr' must be >= 1"))#
-	## wrong method argument#
-	# missing quotes#
-	expect_error(dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, method = prob))#
-	expect_error(dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, method = decision))#
-	# method as vector#
-	expect_that(dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, method = c("decision", "prob")), throws_error("'arg' must be of length 1"))#
-})#
-# test_that("dasvm throws a warning if grouping variable is numeric", {#
-	# data(iris)#
-	# # formula, data#
-	# expect_that(dasvm(formula = as.numeric(Species) ~ ., data = iris, wf = "gaussian", bw = 10), gives_warning("'y' was coerced to a factor"))#
-	# # y, x#
-	# expect_that(dasvm(y = as.numeric(iris[,5]), x = iris[,-5], wf = "gaussian", bw = 10), gives_warning("'y' was coerced to a factor"))#
-# })#
-test_that("dasvm works if only one predictor variable is given", {#
-	data(iris)#
-	fit <- dasvm(Species ~ Petal.Width, data = iris, wf = "gaussian", bw = 5)#
-	expect_equal(ncol(fit$SV), 1)#
-})#
-test_that("dasvm: training data from only one class", {#
-	data(iris)#
-	## y factor#
-	expect_that(dasvm(Species ~ ., data = iris, bw = 2, subset = 1:50), throws_error("need training data from at least two classes"))#
-	expect_that(dasvm(y = iris$Species, x = iris[,-5], bw = 2, subset = 1:50), throws_error("need training data from at least two classes"))#
-	## y integer & type = C-classification#
-	irisint <- iris#
-	irisint$Species <- as.numeric(irisint$Species)#
-	expect_that(dasvm(Species ~ ., data = irisint, bw = 2, subset = 1:50, type = "C-classification"), throws_error("need training data from at least two classes"))#
-	expect_that(dasvm(y = irisint$Species, x = irisint[,-5], bw = 2, subset = 1:50, type = "C-classification"), throws_error("need training data from at least two classes"))#
-	## y integer & type = nu-classification#
-	expect_that(dasvm(Species ~ ., data = irisint, bw = 2, subset = 1:50, type = "nu-classification"), throws_error("need training data from at least two classes"))#
-	expect_that(dasvm(y = irisint$Species, x = irisint[,-5], bw = 2, subset = 1:50, type = "C-classification"), throws_error("need training data from at least two classes"))#
-})#
-# todo: meaningful error message#
-test_that("dasvm: one training observation", {#
-	data(iris)#
-	# one training observation#
-	expect_error(dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, subset = 1))  # Fehler in if (any(co)) { : Fehlender Wert, wo TRUE/FALSE nötig ist#
-	# one training observation in one predictor variable#
-	expect_error(dasvm(Species ~ Petal.Width, data = iris, wf = "gaussian", bw = 1, subset = 1)) # Fehler in if (any(co)) { : Fehlender Wert, wo TRUE/FALSE nötig ist#
-})#
-test_that("dasvm: initial weighting works correctly", {#
-	data(iris)#
-	## check if weighted solution with initial weights = 1 equals unweighted solution#
-	fit1 <- dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 2)#
-	fit2 <- dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 2, case.weights = rep(1,150))#
-	expect_equal(fit1[-1],fit2[-1])#
-	## returned weights	#
-	a <- rep(1,150)#
-	names(a) <- 1:150#
-	expect_equal(fit1$case.weights[[1]], a)#
-	expect_equal(fit1$case.weights, fit2$case.weights)#
-	## weights and subsetting#
-	# formula, data#
-	fit <- dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 2, subset = 11:60)#
-	a <- rep(1,50)#
-	names(a) <- 11:60#
-	expect_equal(fit$case.weights[[1]], a)#
-	# formula, data, weights#
-	a <- rep(1:3,50)[11:60]#
-	a <- a/sum(a) * length(a)#
-	names(a) <- 11:60#
-	fit <- dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 2, case.weights = rep(1:3, 50), subset = 11:60)#
-	expect_equal(fit$case.weights[[1]], a)#
-	# x, y#
-	fit <- dasvm(x = iris[,-5], y = iris$Species, wf = "gaussian", bw = 2, subset = 11:60)#
-	a <- rep(1,50)#
-	names(a) <- 11:60#
-	expect_equal(fit$case.weights[[1]], a)	#
-	# x, y, weights#
-	a <- rep(1:3,50)[11:60]#
-	a <- a/sum(a) * length(a)#
-	names(a) <- 11:60#
-	fit <- dasvm(x = iris[,-5], y = iris$Species, wf = "gaussian", bw = 2, case.weights = rep(1:3, 50), subset = 11:60)#
-	expect_equal(fit$case.weights[[1]], a)#
-	## wrong specification of weights argument#
-	# weights in a matrix#
-	weight <- matrix(seq(1:150), nrow = 50)#
-	expect_error(dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 2, case.weights = weight))#
-	# weights < 0#
-	expect_that(dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 2, case.weights = rep(-5, 150)), throws_error("'case.weights' have to be larger or equal to zero"))#
-	# weights true/false#
-	expect_error(dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 2, case.weights = TRUE))#
-})#
-test_that("dasvm breaks out of for-loop if only one class is left", {#
-	# method = "prob"#
-	expect_that(fit <- dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, k = 5, method = "prob"), gives_warning(c("for at least one class all weights are zero", "some groups are empty", "training data from only one group, breaking out of iterative procedure")))#
-	expect_equal(fit$itr, 2)#
-	expect_equal(length(fit$case.weights), 3)#
-	# method = "decision"#
-	expect_that(fit <- dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, k = 5, method = "decision"), gives_warning(c("for at least one class all weights are zero")))#
-	expect_that(fit <- dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, k = 5, method = "decision"), gives_warning(c("some groups are empty")))#
-	expect_that(fit <- dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, k = 5, method = "decision"), gives_warning(c("training data from only one class, breaking out of iterative procedure")))#
-	expect_equal(fit$itr, 1)#
-	expect_equal(length(fit$case.weights), 2)#
-})#
-#sapply(fit$weights, function(x) return(list(sum(x[1:50]), sum(x[51:100]), sum(x[101:150]))))#
-#sapply(w, function(x) return(list(sum(x[1:50]), sum(x[51:100]), sum(x[101:150]))))#
-test_that("dasvm: subsetting works", {#
-	data(iris)#
-	# formula, data#
-	expect_that(fit1 <- dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 2, subset = 1:80), gives_warning("group virginica is empty"))#
-	expect_that(fit2 <- dasvm(Species ~ ., data = iris[1:80,], wf = "gaussian", bw = 2), gives_warning("group virginica is empty"))#
-	expect_equal(fit1[-1],fit2[-1])#
-	a <- rep(1,80)#
-	names(a) <- 1:80#
-	expect_equal(fit1$case.weights[[1]], a)#
-	# formula, data, weights#
-	fit1 <- dasvm(Species ~ ., data = iris, case.weights = rep(1:3, each = 50), wf = "gaussian", bw = 2, subset = 1:80)#
-	fit2 <- dasvm(Species ~ ., data = iris[1:80,], case.weights = rep(1:3, each = 50)[1:80], wf = "gaussian", bw = 2)#
-	expect_equal(fit1[-1],fit2[-1])#
-	a <- rep(80, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, length), a)#
-	b <- rep(1:3, each = 50)[1:80]#
-	b <- b/sum(b) * length(b)#
-	names(b) <- 1:80#
-	expect_equal(fit1$case.weights[[1]], b)#
-	# x, y#
-	expect_that(fit1 <- dasvm(y = iris$Species, x = iris[,-5], wf = "gaussian", bw = 2, subset = 1:80), gives_warning("some groups are empty"))#
-	expect_that(fit2 <- dasvm(y = iris$Species[1:80], x = iris[1:80,-5], wf = "gaussian", bw = 2), gives_warning("some groups are empty"))#
-	expect_equal(fit1[-1],fit2[-1])#
-	a <- rep(1,80)#
-	names(a) <- 1:80	#
-	expect_equal(fit1$case.weights[[1]], a)#
-	# x, y, weights#
-	fit1 <- dasvm(y = iris$Species, x = iris[,-5], wf = "gaussian", bw = 2, case.weights = rep(1:3, each = 50), subset = 1:80)#
-	fit2 <- dasvm(y = iris$Species[1:80], x = iris[1:80,-5], wf = "gaussian", bw = 2, case.weights = rep(1:3, each = 50)[1:80])#
-	expect_equal(fit1[-1],fit2[-1])#
-	a <- rep(80, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, length), a)#
-	b <- rep(1:3, each = 50)[1:80]#
-	b <- b/sum(b) * length(b)#
-	names(b) <- 1:80#
-	expect_equal(fit1$case.weights[[1]], b)#
-	# wrong specification of subset argument#
-	expect_error(dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, subset = iris[1:10,]))#
-	expect_error(dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, subset = FALSE))#
-	expect_error(dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, subset = 0))#
-	expect_error(dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, subset = -10:50))#
-})#
-test_that("dasvm: NA handling works correctly", {#
-	### NA in x#
-	data(iris)#
-	irisna <- iris#
-	irisna[1:10, c(1,3)] <- NA#
-	## formula, data#
-	# na.fail#
-	expect_that(dasvm(Species ~ ., data = irisna, wf = "gaussian", bw = 10, subset = 6:60, na.action = na.fail), throws_error("missing values in object"))#
-	# check if na.omit works correctly#
-	expect_that(fit1 <- dasvm(Species ~ ., data = irisna, wf = "gaussian", bw = 10, subset = 6:60, na.action = na.omit), gives_warning("group virginica is empty"))#
-	expect_that(fit2 <- dasvm(Species ~ ., data = irisna, wf = "gaussian", bw = 10, subset = 11:60), gives_warning("group virginica is empty"))#
-	attr(fit1$case.weights, "na.action") <- NULL#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	a <- rep(50, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, length), a)#
-	## formula, data, weights#
-	# na.fail#
-	expect_that(dasvm(Species ~ ., data = irisna, wf = "gaussian", bw = 10, subset = 6:60, case.weights = rep(1:3, 50), na.action = na.fail), throws_error("missing values in object"))#
-	# check if na.omit works correctly#
-	expect_that(fit1 <- dasvm(Species ~ ., data = irisna, wf = "gaussian", bw = 10, subset = 6:60, case.weights = rep(1:3, 50), na.action = na.omit), gives_warning("some groups are empty"))#
-	expect_that(fit2 <- dasvm(Species ~ ., data = irisna, wf = "gaussian", bw = 10, subset = 11:60, case.weights = rep(1:3, 50)), gives_warning("some groups are empty"))#
-	attr(fit1$case.weights, "na.action") <- NULL#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	a <- rep(50, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, length), a)#
-	## x, y#
-	# na.fail#
-	expect_that(dasvm(y = irisna$Species, x = irisna[,-5], wf = "gaussian", bw = 10, subset = 6:60, na.action = na.fail), throws_error("missing values in object"))#
-	# check if na.omit works correctly#
-	expect_that(fit1 <- dasvm(y = irisna$Species, x = irisna[,-5], wf = "gaussian", bw = 10, subset = 6:60, na.action = na.omit), gives_warning("some groups are empty"))#
-	expect_that(fit2 <- dasvm(y = irisna$Species, x = irisna[,-5], wf = "gaussian", bw = 10, subset = 11:60), gives_warning("some groups are empty"))#
-	attr(fit1$case.weights, "na.action") <- NULL#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	a <- rep(50, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, length), a)#
-	## x, y, weights#
-	# na.fail#
-	expect_that(dasvm(y = irisna$Species, x = irisna[,-5], wf = "gaussian", bw = 10, subset = 6:60, case.weights = rep(1:3, 50), na.action = na.fail), throws_error("missing values in object"))#
-	# check if na.omit works correctly#
-	expect_that(fit1 <- dasvm(y = irisna$Species, x = irisna[,-5], wf = "gaussian", bw = 10, subset = 6:60, case.weights = rep(1:3, 50), na.action = na.omit), gives_warning("some groups are empty"))#
-	expect_that(fit2 <- dasvm(y = irisna$Species, x = irisna[,-5], wf = "gaussian", bw = 10, subset = 11:60, case.weights = rep(1:3, 50)), gives_warning("some groups are empty"))#
-	attr(fit1$case.weights, "na.action") <- NULL#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	a <- rep(50, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, length), a)#
-	### NA in y#
-	irisna <- iris#
-	irisna$Species[1:10] <- NA#
-	## formula, data#
-	# na.fail#
-	expect_that(dasvm(Species ~ ., data = irisna, wf = "gaussian", bw = 10, subset = 6:60, na.action = na.fail), throws_error("missing values in object"))#
-	# check if na.omit works correctly#
-	expect_that(fit1 <- dasvm(Species ~ ., data = irisna, wf = "gaussian", bw = 10, subset = 6:60, na.action = na.omit), gives_warning("some groups are empty"))#
-	expect_that(fit2 <- dasvm(Species ~ ., data = irisna, wf = "gaussian", bw = 10, subset = 11:60), gives_warning("some groups are empty"))#
-	attr(fit1$case.weights, "na.action") <- NULL#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	a <- rep(50, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, length), a)#
-	## formula, data, weights#
-	# na.fail#
-	expect_that(dasvm(Species ~ ., data = irisna, wf = "gaussian", bw = 10, subset = 6:60, case.weights = rep(1:3, 50), na.action = na.fail), throws_error("missing values in object"))#
-	# check if na.omit works correctly#
-	expect_that(fit1 <- dasvm(Species ~ ., data = irisna, wf = "gaussian", bw = 10, subset = 6:60, case.weights = rep(1:3, 50), na.action = na.omit), gives_warning("some groups are empty"))#
-	expect_that(fit2 <- dasvm(Species ~ ., data = irisna, wf = "gaussian", bw = 10, subset = 11:60, case.weights = rep(1:3, 50)), gives_warning("some groups are empty"))#
-	attr(fit1$case.weights, "na.action") <- NULL#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	a <- rep(50, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, length), a)#
-	## x, y#
-	# na.fail#
-	expect_that(dasvm(y = irisna$Species, x = irisna[,-5], wf = "gaussian", bw = 10, subset = 6:60, na.action = na.fail), throws_error("missing values in object"))#
-	# check if na.omit works correctly#
-	expect_that(fit1 <- dasvm(y = irisna$Species, x = irisna[,-5], wf = "gaussian", bw = 10, subset = 6:60, na.action = na.omit), gives_warning("some groups are empty"))#
-	expect_that(fit2 <- dasvm(y = irisna$Species, x = irisna[,-5], wf = "gaussian", bw = 10, subset = 11:60), gives_warning("some groups are empty"))#
-	attr(fit1$case.weights, "na.action") <- NULL#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	a <- rep(50, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, length), a)#
-	## x, grouping, weights#
-	# na.fail#
-	expect_that(dasvm(y = irisna$Species, x = irisna[,-5], wf = "gaussian", bw = 10, subset = 6:60, case.weights = rep(1:3, 50), na.action = na.fail), throws_error("missing values in object"))#
-	# check if na.omit works correctly#
-	expect_that(fit1 <- dasvm(y = irisna$Species, x = irisna[,-5], wf = "gaussian", bw = 10, subset = 6:60, case.weights = rep(1:3, 50), na.action = na.omit), gives_warning("some groups are empty"))#
-	expect_that(fit2 <- dasvm(y = irisna$Species, x = irisna[,-5], wf = "gaussian", bw = 10, subset = 11:60, case.weights = rep(1:3, 50)), gives_warning("some groups are empty"))#
-	attr(fit1$case.weights, "na.action") <- NULL#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	a <- rep(50, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, length), a)#
-	### NA in weights#
-	weights <- rep(1:3,50)#
-	weights[1:10] <- NA#
-	## formula, data, weights#
-	# na.fail#
-	expect_that(dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, subset = 6:60, case.weights = weights, na.action = na.fail), throws_error("missing values in object"))#
-	# check if na.omit works correctly#
-	expect_that(fit1 <- dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, subset = 6:60, case.weights = weights, na.action = na.omit), gives_warning("some groups are empty"))#
-	expect_that(fit2 <- dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, subset = 11:60, case.weights = weights), gives_warning("some groups are empty"))#
-	attr(fit1$case.weights, "na.action") <- NULL#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	a <- rep(50, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, length), a)#
-	## x, y, weights#
-	# na.fail#
-	expect_that(dasvm(y = iris$Species, x = iris[,-5], wf = "gaussian", bw = 10, subset = 6:60, case.weights = weights, na.action = na.fail), throws_error("missing values in object"))#
-	# check if na.omit works correctly#
-	expect_that(fit1 <- dasvm(y = iris$Species, x = iris[,-5], wf = "gaussian", bw = 10, subset = 6:60, case.weights = weights, na.action = na.omit), gives_warning("some groups are empty"))#
-	expect_that(fit2 <- dasvm(y = iris$Species, x = iris[,-5], wf = "gaussian", bw = 10, subset = 11:60, case.weights = weights), gives_warning("some groups are empty"))#
-	attr(fit1$case.weights, "na.action") <- NULL#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	a <- rep(50, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, length), a)#
-	### NA in subset#
-	subset <- 6:60#
-	subset[1:5] <- NA#
-	## formula, data#
-	# na.fail#
-	expect_that(dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, subset = subset, na.action = na.fail), throws_error("missing values in object"))#
-	# check if na.omit works correctly#
-	expect_that(fit1 <- dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, subset = subset, na.action = na.omit), gives_warning("some groups are empty"))#
-	expect_that(fit2 <- dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, subset = 11:60), gives_warning("some groups are empty"))#
-	attr(fit1$case.weights, "na.action") <- NULL#
-	expect_equal(fit1[-c(1, 28)], fit2[-c(1,28)])#
-	a <- rep(50, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, length), a)#
-	## formula, data, weights#
-	# na.fail#
-	expect_that(dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, subset = subset, case.weights = rep(1:3, 50), na.action = na.fail), throws_error("missing values in object"))#
-	# check if na.omit works correctly#
-	expect_that(fit1 <- dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, subset = subset, case.weights = rep(1:3, 50), na.action = na.omit), gives_warning("some groups are empty"))#
-	expect_that(fit2 <- dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, subset = 11:60, case.weights = rep(1:3, 50)), gives_warning("some groups are empty"))#
-	attr(fit1$case.weights, "na.action") <- NULL#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	a <- rep(50, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, length), a)#
-	## x, y#
-	# na.fail#
-	expect_that(dasvm(y = iris$Species, x = iris[,-5], wf = "gaussian", bw = 10, subset = subset, na.action = na.fail), throws_error("missing values in object"))#
-	# check if na.omit works correctly#
-	expect_that(fit1 <- dasvm(y = iris$Species, x = iris[,-5], wf = "gaussian", bw = 10, subset = subset, na.action = na.omit), gives_warning("some groups are empty"))#
-	expect_that(fit2 <- dasvm(y = iris$Species, x = iris[,-5], wf = "gaussian", bw = 10, subset = 11:60), gives_warning("some groups are empty"))#
-	attr(fit1$case.weights, "na.action") <- NULL#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	a <- rep(50, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, length), a)#
-	## x, y, weights#
-	# na.fail#
-	expect_that(dasvm(y = iris$Species, x = iris[,-5], wf = "gaussian", bw = 10, subset = subset, case.weights = rep(1:3, 50), na.action = na.fail), throws_error("missing values in object"))#
-	# check if na.omit works correctly#
-	expect_that(fit1 <- dasvm(y = iris$Species, x = iris[,-5], wf = "gaussian", bw = 10, subset = subset, case.weights = rep(1:3, 50), na.action = na.omit), gives_warning("some groups are empty"))#
-	expect_that(fit2 <- dasvm(y = iris$Species, x = iris[,-5], wf = "gaussian", bw = 10, subset = 11:60, case.weights = rep(1:3, 50)), gives_warning("some groups are empty"))#
-	attr(fit1$case.weights, "na.action") <- NULL#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	a <- rep(50, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, length), a)#
-})#
-test_that("dasvm: try all weight functions", {#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "gaussian", bw = 0.5)    #
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = gaussian(0.5))    #
-	fit3 <- dasvm(x = iris[,-5], y = iris$Species, wf = "gaussian", bw = 0.5)    #
-	fit4 <- dasvm(x = iris[,-5], y = iris$Species, wf = gaussian(0.5))    #
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit3[-c(1,28)], fit4[-c(1,28)])#
-	expect_equal(fit2[-c(1,39)], fit4[-c(1)])#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "gaussian", bw = 0.5, k = 30)    #
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = gaussian(bw = 0.5, k = 30))    #
-	fit3 <- dasvm(x = iris[,-5], y = iris$Species, wf = "gaussian", bw = 0.5, k = 30)    #
-	fit4 <- dasvm(x = iris[,-5], y = iris$Species, wf = gaussian(0.5, 30))#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit3[-c(1,28)], fit4[-c(1,28)])#
-	expect_equal(fit2[-c(1,39)], fit4[-c(1)])#
-	a <- rep(30, 3)#
-	names(a) <- 1:3#
-	expect_equal(sapply(fit1$case.weights[2:4], function(x) sum(x > 0)), a)#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "epanechnikov", bw = 5, k = 50)#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = epanechnikov(bw = 5, k = 50))#
-	fit3 <- dasvm(x = iris[,-5], y = iris$Species, wf = "epanechnikov", bw = 5, k = 50)#
-	fit4 <- dasvm(x = iris[,-5], y = iris$Species, wf = epanechnikov(5, 50))    #
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit3[-c(1,28)], fit4[-c(1,28)])#
-	expect_equal(fit2[-c(1,39)], fit4[-c(1)])#
-	a <- rep(50, 3)#
-	names(a) <- 1:3#
-	expect_equal(sapply(fit1$case.weights[2:4], function(x) sum(x > 0)), a)#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "rectangular", bw = 5, k = 50)#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = rectangular(bw = 5, k = 50))#
-	fit3 <- dasvm(x = iris[,-5], y = iris$Species, wf = "rectangular", bw = 5, k = 50)#
-	fit4 <- dasvm(x = iris[,-5], y = iris$Species, wf = rectangular(5, 50))    #
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit3[-c(1,28)], fit4[-c(1,28)])#
-	expect_equal(fit2[-c(1,39)], fit4[-c(1)])#
-	a <- rep(50, 3)#
-	names(a) <- 1:3#
-	expect_equal(sapply(fit1$case.weights[2:4], function(x) sum(x > 0)), a)#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "triangular", bw = 5, k = 50)#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = triangular(5, k = 50))#
-	fit3 <- dasvm(x = iris[,-5], y = iris$Species, wf = "triangular", bw = 5, k = 50)#
-	fit4 <- dasvm(x = iris[,-5], y = iris$Species, wf = triangular(5, 50))    #
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit3[-c(1,28)], fit4[-c(1,28)])#
-	expect_equal(fit2[-c(1,39)], fit4[-c(1)])#
-	a <- rep(50, 3)#
-	names(a) <- 1:3#
-	expect_equal(sapply(fit1$case.weights[2:4], function(x) sum(x > 0)), a)#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "biweight", bw = 5, k = 50)#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = biweight(5, k = 50))#
-	fit3 <- dasvm(x = iris[,-5], y = iris$Species, wf = "biweight", bw = 5, k = 50)#
-	fit4 <- dasvm(x = iris[,-5], y = iris$Species, wf = biweight(5, 50))    #
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit3[-c(1,28)], fit4[-c(1,28)])#
-	expect_equal(fit2[-c(1,39)], fit4[-c(1)])#
-	a <- rep(50, 3)#
-	names(a) <- 1:3#
-	expect_equal(sapply(fit1$case.weights[2:4], function(x) sum(x > 0)), a)#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "optcosine", bw = 5, k = 50)#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = optcosine(5, k = 50))#
-	fit3 <- dasvm(x = iris[,-5], y = iris$Species, wf = "optcosine", bw = 5, k = 50)#
-	fit4 <- dasvm(x = iris[,-5], y = iris$Species, wf = optcosine(5, 50))    #
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit3[-c(1,28)], fit4[-c(1,28)])#
-	expect_equal(fit2[-c(1,39)], fit4[-c(1)])#
-	a <- rep(50, 3)#
-	names(a) <- 1:3#
-	expect_equal(sapply(fit1$case.weights[2:4], function(x) sum(x > 0)), a)#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "cosine", bw = 5, k = 50)#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = cosine(5, k = 50))#
-	fit3 <- dasvm(x = iris[,-5], y = iris$Species, wf = "cosine", bw = 5, k = 50)#
-	fit4 <- dasvm(x = iris[,-5], y = iris$Species, wf = cosine(5, 50))    #
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit3[-c(1,28)], fit4[-c(1,28)])#
-	expect_equal(fit2[-c(1,39)], fit4[-c(1)])#
-	a <- rep(50, 3)#
-	names(a) <- 1:3#
-	expect_equal(sapply(fit1$case.weights[2:4], function(x) sum(x > 0)), a)#
-})#
-test_that("dasvm: local solution with rectangular window function and large bw and global solution coincide", {#
-	## method = "prob"#
-	fit1 <- wsvm(formula = Species ~ ., data = iris, kernel = "linear")#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = rectangular(20), kernel = "linear")#
-	expect_equal(fit1[-c(1,31)], fit2[-c(1,31:38)])#
-	expect_equal(fit1$weights, fit2$weights[[1]])#
-	## method = "decison"#
-	fit1 <- wsvm(formula = Species ~ ., data = iris, kernel = "linear", method = "decision")#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = rectangular(20), kernel = "linear", method = "decision")#
-	expect_equal(fit1[-c(1,31)], fit2[-c(1,31:38)])#
-	expect_equal(fit1$weights, fit2$weights[[1]])#
-})#
-test_that("dasvm: arguments related to weighting misspecified", {#
-	# bw, k not required#
-	expect_that(fit1 <- dasvm(Species ~ ., data = iris, wf = gaussian(0.5), k = 30, bw = 0.5), gives_warning(c("argument 'k' is ignored", "argument 'bw' is ignored")))#
-	fit2 <- dasvm(Species ~ ., data = iris, wf = gaussian(0.5))#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_that(fit1 <- dasvm(Species ~ ., data = iris, wf = gaussian(0.5), bw = 0.5), gives_warning("argument 'bw' is ignored"))	#
-	fit2 <- dasvm(Species ~ ., data = iris, wf = gaussian(0.5))#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit1$k, NULL)#
-	expect_equal(fit1$nn.only, NULL)	#
-	expect_equal(fit1$bw, 0.5)	#
-	expect_equal(fit1$adaptive, FALSE)	#
-	expect_that(fit1 <- dasvm(Species ~ ., data = iris, wf = function(x) exp(-x), bw = 0.5, k = 30), gives_warning(c("argument 'k' is ignored", "argument 'bw' is ignored")))#
-	expect_that(fit2 <- dasvm(Species ~ ., data = iris, wf = function(x) exp(-x), k = 30), gives_warning("argument 'k' is ignored"))#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit1$k, NULL)#
-	expect_equal(fit1$nn.only, NULL)	#
-	expect_equal(fit1$bw, NULL)	#
-	expect_equal(fit1$adaptive, NULL)	#
-	expect_that(fit1 <- dasvm(Species ~ ., data = iris, wf = function(x) exp(-x), bw = 0.5), gives_warning("argument 'bw' is ignored"))#
-	fit2 <- dasvm(Species ~ ., data = iris, wf = function(x) exp(-x))#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit1$k, NULL)#
-	expect_equal(fit1$nn.only, NULL)	#
-	expect_equal(fit1$bw, NULL)	#
-	expect_equal(fit1$adaptive, NULL)	#
-	# missing quotes#
-	expect_error(dasvm(formula = Species ~ ., data = iris, wf = gaussian))#
-	# bw, k missing#
-	expect_that(dasvm(formula = Species ~ ., data = iris, wf = gaussian()), throws_error("either 'bw' or 'k' have to be specified"))#
-	expect_that(dasvm(formula = Species ~ ., data = iris, wf = gaussian(), k = 10), throws_error("either 'bw' or 'k' have to be specified"))#
-	expect_that(dasvm(Species ~ ., data = iris), throws_error("either 'bw' or 'k' have to be specified"))#
-	# bw < 0#
-	expect_that(dasvm(formula = Species ~ ., data = iris, wf = "gaussian", bw = -5), throws_error("'bw' must be positive"))#
-	expect_that(dasvm(y = iris$Species, x = iris[,-5], wf = "gaussian", bw = -5), throws_error("'bw' must be positive"))#
-	expect_that(dasvm(formula = Species ~ ., data = iris, wf = "cosine", k = 10, bw = -50), throws_error("'bw' must be positive"))#
-	expect_that(dasvm(y = iris$Species, x = iris[,-5], wf = "cosine", k = 10, bw = -50), throws_error("'bw' must be positive"))#
-	# bw vector#
-	expect_that(dasvm(formula = Species ~., data = iris, wf = "gaussian", bw = rep(1, nrow(iris))), gives_warning("only first element of 'bw' used"))#
-	expect_that(dasvm(y = iris$Species, x = iris[,-5], wf = "gaussian", bw = rep(1, nrow(iris))), gives_warning("only first element of 'bw' used"))#
-	# k < 0#
-	expect_that(dasvm(formula = Species ~ ., data = iris, wf = "gaussian", k =-7, bw = 50), throws_error("'k' must be positive"))#
-	# k too small#
-	#expect_error(dasvm(formula = Species ~ ., data = iris, wf = "gaussian", k = 1, bw = 0.005))#
-	# k too large#
-	expect_that(dasvm(formula = Species ~ ., data = iris, k = 250, wf = "gaussian", bw = 50), throws_error("'k' is larger than 'n'"))#
-	# k vector#
-	expect_that(dasvm(formula = Species ~., data = iris, wf = "gaussian", k = rep(50, nrow(iris))), gives_warning("only first element of 'k' used"))#
-	expect_that(dasvm(y = iris$Species, x = iris[,-5], wf = "gaussian", k = rep(50, nrow(iris))), gives_warning("only first element of 'k' used"))#
-})#
-test_that("dasvm: weighting schemes work", {#
-	### wf with finite support#
-	## fixed bw#
-	# method = "prob"#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "rectangular", bw = 5)#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = rectangular(bw = 5))#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit1$bw, 5)#
-	expect_equal(fit1$k, NULL)#
-	expect_equal(fit1$nn.only, NULL)#
-	expect_true(!fit1$adaptive)#
-	expect_equal(fit1$method, "prob")#
-#
-	# method = "decision"#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "rectangular", bw = 5, method = "decision")#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = rectangular(bw = 5), method = "decision")#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit1$bw, 5)#
-	expect_equal(fit1$k, NULL)#
-	expect_equal(fit1$nn.only, NULL)#
-	expect_true(!fit1$adaptive)#
-	expect_equal(fit1$method, "decision")#
-#
-	## adaptive bw, only knn #
-	# method = "prob"#
-	expect_that(fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "rectangular", k = 50), gives_warning("some groups are empty"))#
-	expect_that(fit2 <- dasvm(formula = Species ~ ., data = iris, wf = rectangular(k = 50)), gives_warning("some groups are empty"))#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit1$k, 50)#
-	expect_equal(fit1$bw, NULL)#
-	expect_true(fit1$nn.only)#
-	expect_true(fit1$adaptive)#
-	expect_equal(fit1$method, "prob")#
-	a <- rep(50, 3)#
-	names(a) <- 1:3#
-	expect_equal(sapply(fit1$case.weights[2:4], function(x) sum(x > 0)), a)#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "rectangular", k = 50, method = "decision")#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = rectangular(k = 50), method = "decision")#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit1$k, 50)#
-	expect_equal(fit1$bw, NULL)#
-	expect_true(fit1$nn.only)#
-	expect_true(fit1$adaptive)#
-	expect_equal(fit1$method, "decision")#
-	expect_equal(sapply(fit1$case.weights[2:4], function(x) sum(x > 0)), a)#
-	## fixed bw, only knn#
-	# method = "prob"#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "rectangular", bw = 5, k = 50)#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = rectangular(bw = 5, k = 50))#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit1$bw, 5)#
-	expect_equal(fit1$k, 50)#
-	expect_true(fit1$nn.only)#
-	expect_true(!fit1$adaptive)#
-	expect_equal(fit1$method, "prob")#
-	a <- rep(50, 3)#
-	names(a) <- 1:3#
-	expect_equal(sapply(fit1$case.weights[2:4], function(x) sum(x > 0)), a)#
-	# method = "decision"#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "rectangular", bw = 5, k = 80, method = "decision")#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = rectangular(bw = 5, k = 80), method = "decision")#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit1$bw, 5)#
-	expect_equal(fit1$k, 80)#
-	expect_true(fit1$nn.only)#
-	expect_true(!fit1$adaptive)#
-	expect_equal(fit1$method, "decision")#
-	a <- rep(80, 3)#
-	names(a) <- 1:3#
-	expect_equal(sapply(fit1$case.weights[2:4], function(x) sum(x > 0)), a)#
-	# nn.only not needed#
-	expect_that(dasvm(formula = Species ~ ., data = iris, wf = "rectangular", bw = 5, nn.only = TRUE), gives_warning("argument 'nn.only' is ignored"))#
-	# nn.only has to be TRUE if bw and k are both given#
-	expect_error(dasvm(formula = Species ~ ., data = iris, wf = "rectangular", bw = 5, k = 50, nn.only = FALSE))#
-	### wf with infinite support#
-	## fixed bw#
-	# method = "prob"#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "gaussian", bw = 0.5)#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = gaussian(bw = 0.5))#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit1$bw, 0.5)#
-	expect_equal(fit1$k, NULL)#
-	expect_equal(fit1$nn.only, NULL)#
-	expect_true(!fit1$adaptive)#
-	a <- rep(150, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, function(x) sum(x > 0)), a)#
-	# method = "decision"#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "gaussian", bw = 0.5, method = "decision")#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = gaussian(bw = 0.5), method = "decision")#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit1$bw, 0.5)#
-	expect_equal(fit1$k, NULL)#
-	expect_equal(fit1$nn.only, NULL)#
-	expect_true(!fit1$adaptive)#
-	a <- rep(150, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, function(x) sum(x > 0)), a)#
-	## adaptive bw, only knn#
-	# method = "prob"#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "gaussian", k = 50)#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = gaussian(k = 50))#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit1$bw, NULL)#
-	expect_equal(fit1$k, 50)#
-	expect_equal(fit1$nn.only, TRUE)#
-	expect_true(fit1$adaptive)#
-	a <- rep(50, 3)#
-	names(a) <- 1:3#
-	expect_equal(sapply(fit1$case.weights[2:4], function(x) sum(x > 0)), a)#
-	# method = "decision"#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "gaussian", k = 50, method = "decision")#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = gaussian(k = 50), method = "decision")#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit1$bw, NULL)#
-	expect_equal(fit1$k, 50)#
-	expect_equal(fit1$nn.only, TRUE)#
-	expect_true(fit1$adaptive)#
-	a <- rep(50, 3)#
-	names(a) <- 1:3#
-	expect_equal(sapply(fit1$case.weights[2:4], function(x) sum(x > 0)), a)#
-	## adaptive bw, all obs#
-	# method = "prob"#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "gaussian", k = 50, nn.only = FALSE)#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = gaussian(k = 50, nn.only = FALSE))#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit1$bw, NULL)#
-	expect_equal(fit1$k, 50)#
-	expect_equal(fit1$nn.only, FALSE)#
-	expect_true(fit1$adaptive)#
-	a <- rep(150, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, function(x) sum(x > 0)), a)#
-	# method = "decision"#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "gaussian", k = 50, nn.only = FALSE, method = "decision")#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = gaussian(k = 50, nn.only = FALSE), method = "decision")#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit1$bw, NULL)#
-	expect_equal(fit1$k, 50)#
-	expect_equal(fit1$nn.only, FALSE)#
-	expect_true(fit1$adaptive)#
-	a <- rep(150, 4)#
-	names(a) <- 0:3#
-	expect_equal(sapply(fit1$case.weights, function(x) sum(x > 0)), a)#
-	## fixed bw, only knn#
-	# method = "prob"#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "gaussian", bw = 1, k = 50)#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = gaussian(bw = 1, k = 50))#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit1$bw, 1)#
-	expect_equal(fit1$k, 50)#
-	expect_equal(fit1$nn.only, TRUE)#
-	expect_true(!fit1$adaptive)#
-	a <- rep(50, 3)#
-	names(a) <- 1:3#
-	expect_equal(sapply(fit1$case.weights[2:4], function(x) sum(x > 0)), a)#
-	# method = "decision"#
-	fit1 <- dasvm(formula = Species ~ ., data = iris, wf = "gaussian", bw = 1, k = 50, method = "decision")#
-	fit2 <- dasvm(formula = Species ~ ., data = iris, wf = gaussian(bw = 1, k = 50), method = "decision")#
-	expect_equal(fit1[-c(1,28)], fit2[-c(1,28)])#
-	expect_equal(fit1$bw, 1)#
-	expect_equal(fit1$k, 50)#
-	expect_equal(fit1$nn.only, TRUE)#
-	expect_true(!fit1$adaptive)#
-	a <- rep(50, 3)#
-	names(a) <- 1:3#
-	expect_equal(sapply(fit1$case.weights[2:4], function(x) sum(x > 0)), a)#
-	# nn.only has to be TRUE if bw and k are both given#
-	expect_that(dasvm(formula = Species ~ ., data = iris, wf = "gaussian", bw = 1, k = 50, nn.only = FALSE), throws_error("if 'bw' and 'k' are given argument 'nn.only' must be TRUE"))#
-})	#
-#=================================================================================================================#
-context("predict.dasvm")#
-#
-test_that("predict.dasvm works correctly with formula and data.frame interface and with missing newdata", {#
-	data(iris)#
-	ran <- sample(1:150,100)#
-	## formula, data#
-	fit <- dasvm(formula = Species ~ ., data = iris, wf = "gaussian", bw = 2, subset = ran, probability = TRUE)#
-  	pred <- predict(fit)#
-  	expect_equal(names(pred), rownames(iris)[ran])  	#
-	## formula, data, newdata#
-  	pred <- predict(fit, newdata = iris[-ran,], probability = TRUE)#
-  	expect_equal(names(pred), rownames(iris)[-ran])#
-	posterior <- attr(pred, "probabilities")#
-	expect_equal(rownames(posterior), rownames(iris)[-ran])#
-	## y, x#
-	fit <- dasvm(x = iris[,-5], y = iris$Species, wf = "gaussian", bw = 2, subset = ran, probability = TRUE)  #
-  	pred <- predict(fit)#
-  	expect_equal(names(pred), rownames(iris)[ran])#
-  	## y, x, newdata#
-  	pred <- predict(fit, newdata = iris[-ran,-5], probability = TRUE)#
-  	expect_equal(names(pred), rownames(iris)[-ran])#
-	posterior <- attr(pred, "probabilities")#
-	expect_equal(rownames(posterior), rownames(iris)[-ran])#
-})#
-test_that("predict.dasvm: retrieving training data works", {#
-	data(iris)#
-	## no subset#
-	# formula, data#
-	fit <- dasvm(formula = Species ~ ., data = iris, wf = "gaussian", bw = 2)#
-  	pred1 <- predict(fit)#
-  	pred2 <- predict(fit, newdata = iris)#
-  	expect_equal(pred1, pred2)#
-	# y, x#
-	fit <- dasvm(x = iris[,-5], y = iris$Species, wf = "gaussian", bw = 2)  #
-  	pred1 <- predict(fit)#
-  	pred2 <- predict(fit, newdata = iris[,-5])#
-  	expect_equal(pred1, pred2)#
-	## subset#
-	ran <- sample(1:150,100)#
-	# formula, data#
-	fit <- dasvm(formula = Species ~ ., data = iris, wf = "gaussian", bw = 2, subset = ran)#
-  	pred1 <- predict(fit)#
-  	pred2 <- predict(fit, newdata = iris[ran,])#
-  	expect_equal(pred1, pred2)#
-	# y, x#
-	fit <- dasvm(x = iris[ran,-5], y = iris$Species[ran], wf = "gaussian", bw = 2)  #
-  	pred1 <- predict(fit)#
-  	pred2 <- predict(fit, newdata = iris[ran,-5])#
-  	expect_equal(pred1, pred2)#
-})#
-test_that("predict.dasvm works with missing classes in the training data", {#
-	data(iris)#
-	ran <- sample(1:150,100)#
-	expect_that(fit <- dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 10, subset = 1:100, probability = TRUE), gives_warning("group virginica is empty"))#
-	pred <- predict(fit, newdata = iris[-ran,-5], probability = TRUE, decision.values = TRUE)#
-	expect_equal(nlevels(pred), 3)#
-	expect_equal(ncol(attr(pred, "probabilities")), 2)#
-	expect_equal(ncol(attr(pred, "decision.values")), 1)	#
-})#
-test_that("predict.dasvm works with one single predictor variable", {#
-	data(iris)#
-	ran <- sample(1:150,100)#
-	fit <- dasvm(Species ~ Petal.Width, data = iris, wf = "gaussian", bw = 2, subset = ran, probability = TRUE)#
-	expect_equal(ncol(fit$SV), 1)#
-	pred <- predict(fit, newdata = iris[-ran,], probability = TRUE, decision.values = TRUE)#
-	expect_equal(nlevels(pred), 3)#
-	expect_equal(ncol(attr(pred, "probabilities")), 3)#
-	expect_equal(ncol(attr(pred, "decision.values")), 3)#
-})#
-test_that("predict.dasvm works with one single test observation", {#
-	data(iris)#
-	ran <- sample(1:150,100)#
-	fit <- dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 2, subset = ran, probability = TRUE)#
-  	pred <- predict(fit, newdata = iris[5,], probability = TRUE, decision.values = TRUE)#
-	expect_equal(length(pred), 1)#
-	expect_equal(dim(attr(pred, "probabilities")), c(1, 3))#
-	expect_equal(dim(attr(pred, "decision.values")), c(1, 3))#
-	a <- factor("setosa", levels = c("setosa", "versicolor", "virginica"))#
-	names(a) = "5"#
-	expect_equivalent(pred, a)#
-	pred <- predict(fit, newdata = iris[58,], probability = TRUE, decision.values = TRUE)#
-	expect_equal(length(pred), 1)#
-	expect_equal(dim(attr(pred, "probabilities")), c(1, 3))#
-	expect_equal(dim(attr(pred, "decision.values")), c(1, 3))#
-	a <- factor("versicolor", levels = c("setosa", "versicolor", "virginica"))#
-	names(a) = "58"#
-	expect_equivalent(pred, a)#
-})	#
-test_that("predict.dasvm works with one single predictor variable and one single test observation", {#
-	data(iris)#
-	ran <- sample(1:150,100)#
-	fit <- dasvm(Species ~ Petal.Width, data = iris, wf = "gaussian", bw = 2, subset = ran, probability = TRUE)#
-	expect_equal(ncol(fit$SV), 1)#
-	pred <- predict(fit, newdata = iris[5,], probability = TRUE, decision.values = TRUE)#
-	expect_equal(length(pred), 1)#
-	expect_equal(dim(attr(pred, "probabilities")), c(1, 3))#
-	expect_equal(dim(attr(pred, "decision.values")), c(1, 3))#
-})#
-test_that("predict.dasvm: NA handling in newdata works", {#
-	data(iris)#
-	ran <- sample(1:150,100)#
-	irisna <- iris#
-	irisna[1:17,c(1,3)] <- NA#
-	fit <- dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 50, subset = ran, probability = TRUE)#
-	# na.fail#
-	expect_that(pred <- predict(fit, newdata = irisna, na.action = na.fail, probability = TRUE, decision.values = TRUE), throws_error("missing values in object"))#
-	# na.omit#
-	pred <- predict(fit, newdata = irisna, probability = TRUE, decision.values = TRUE)#
-	expect_equal(length(pred), 133)#
-	expect_equal(names(pred), as.character(18:150))#
-	expect_equal(nrow(attr(pred, "probabilities")), 133)#
-	expect_equal(rownames(attr(pred, "probabilities")), as.character(18:150))#
-	expect_equal(nrow(attr(pred, "decision.values")), 133)#
-	expect_equal(rownames(attr(pred, "decision.values")), as.character(18:150))#
-})#
-test_that("predict.dasvm: misspecified arguments", {#
-	data(iris)#
-	ran <- sample(1:150,100)#
-	fit <- dasvm(Species ~ ., data = iris, wf = "gaussian", bw = 2, subset = ran)#
-    # errors in newdata#
-    expect_error(predict(fit, newdata = TRUE))#
-    expect_error(predict(fit, newdata = -50:50))#
-})  	#
-# #=====================================================================================================================#
-# ## check if decision value weighting method works correctly#
-# mod <- e1071:::svm(Species ~ Sepal.Length + Sepal.Width, data = iris)#, kernel = "linear")#
-# x1 <- seq(4,8,0.05)#
-# x2 <- seq(2,5,0.05)#
-# iris.grid <- expand.grid(Sepal.Length = x1, Sepal.Width = x2)#
-# pred <- e1071:::predict.svm(mod, iris.grid, decision.values = TRUE, main = colnames(decision)[1])#
-# decision.grid <- attr(pred, "decision.values")#
-#
-# filled.contour(x1, x2, matrix(decision.grid[,1], length(x1)), main = colnames(decision.grid)[1])#
-# filled.contour(x1, x2, matrix(decision.grid[,2], length(x1)), main = colnames(decision.grid)[2])#
-# filled.contour(x1, x2, matrix(decision.grid[,3], length(x1)), main = colnames(decision.grid)[3])#
-#
-# plot(iris$Sepal.Length, iris$Sepal.Width, col = iris$Species, main = colnames(decision.grid)[1])#
-# contour(x1, x2, matrix(decision.grid[,1], length(x1)), add = TRUE, level = c(-1,0,1))#
-#
-# plot(iris$Sepal.Length, iris$Sepal.Width, col = iris$Species, main = colnames(decision.grid)[2])#
-# contour(x1, x2, matrix(decision.grid[,2], length(x1)), add = TRUE, level = c(-1,0,1))#
-#
-# plot(iris$Sepal.Length, iris$Sepal.Width, col = iris$Species, main = colnames(decision.grid)[3])#
-# contour(x1, x2, matrix(decision.grid[,3], length(x1)), add = TRUE, level = c(-1,0,1))#
-#
-# mod <- e1071:::svm(Species ~ Sepal.Length + Sepal.Width, data = iris)#, kernel = "linear")#
-# pred <- e1071:::predict.svm(mod, iris, decision.values = TRUE)#
-# decision <- attr(pred, "decision.values")#
-#
-# ####
-# dec <- sapply(1:n, function(x) decision[x,grep(iris$Species[x], colnames(decision))]) #
-# prob <- sapply(1:n, function(x) min(abs(decision[x, grep(iris$Species[x], colnames(decision))])))#
-# ###
-#
-# inds <- sapply(iris$Species, function(x) grep(x, colnames(decision))) #
-# n <- 150#
-# dec <- cbind(decision[cbind(1:n, inds[1,1:n])], decision[cbind(1:n, inds[2,1:n])])#
-# problem <- max.col(-abs(dec))#
-# wf <- gaussian(bw = 0.5)#
-# w <- wf(abs(dec[cbind(1:n,problem)])) #
-#
-# plot(iris[,1], iris[,2], col = iris$Species, cex = w*10)#
-# legend("bottomright", legend = levels(iris$Species), col = as.numeric(unique(iris$Species)), lty = 1)#
-# contour(x1, x2, matrix(decision.grid[,1], length(x1)), add = TRUE, level = -1:1, label = colnames(decision.grid)[1])#
-# contour(x1, x2, matrix(decision.grid[,2], length(x1)), add = TRUE, level = -1:1, label = colnames(decision.grid)[2])#
-# contour(x1, x2, matrix(decision.grid[,3], length(x1)), add = TRUE,  level = -1:1,label = colnames(decision.grid)[3])#
-# ##### durch beta teilen wichtig???#
-#
-# mean(pred != iris$Species)#
-#
-# #####
-# mod <- dasvm(Species ~ Sepal.Length + Sepal.Width, data = iris, wf = "gaussian", bw = 0.8, itr = 10, method = "decision", kernel = "linear")#
-# x1 <- seq(4,8,0.05)#
-# x2 <- seq(2,5,0.05)#
-# #mod$case.weights#
-# plot(iris[,1], iris[,2], col = iris$Species, cex = mod$case.weights[[1]]*10)#
-# plot(iris[,1], iris[,2], col = iris$Species, cex = mod$case.weights[[2]]*10)#
-# plot(iris[,1], iris[,2], col = iris$Species, cex = mod$case.weights[[3]]*10)#
-# plot(iris[,1], iris[,2], col = iris$Species, cex = mod$case.weights[[11]]*10)#
-# legend("bottomright", legend = levels(iris$Species), col = as.numeric(unique(iris$Species)), lty = 1)#
-#
-# iris.grid <- expand.grid(Sepal.Length = x1, Sepal.Width = x2)#
-# pred <- predict(mod, newdata = iris.grid, decision.values = TRUE)#
-# decision.grid <- attr(pred, "decision.values")#
-# contour(x1, x2, matrix(decision.grid[,1], length(x1)), add = TRUE, level = -1:1, label = colnames(decision.grid)[1])#
-# contour(x1, x2, matrix(decision.grid[,2], length(x1)), add = TRUE, level = -1:1, label = colnames(decision.grid)[2])#
-# contour(x1, x2, matrix(decision.grid[,3], length(x1)), add = TRUE, level = -1:1, label = colnames(decision.grid)[3])#
-#
-#=====================================================================================================================#
-# ## check if probability weighting method works correctly#
-# mod <- e1071:::svm(Species ~ Sepal.Length + Sepal.Width, data = iris, probability = TRUE)#, kernel = "linear")#
-# x1 <- seq(4,8,0.05)#
-# x2 <- seq(2,5,0.05)#
-# iris.grid <- expand.grid(Sepal.Length = x1, Sepal.Width = x2)#
-# pred <- e1071:::predict.svm(mod, iris.grid, probability = TRUE)#
-# prob.grid <- attr(pred, "probabilities")#
-#
-# filled.contour(x1, x2, matrix(prob.grid[,1], length(x1)), main = colnames(prob.grid)[1])#
-# filled.contour(x1, x2, matrix(prob.grid[,2], length(x1)), main = colnames(prob.grid)[2])#
-# filled.contour(x1, x2, matrix(prob.grid[,3], length(x1)), main = colnames(prob.grid)[3])#
-#
-# plot(iris$Sepal.Length, iris$Sepal.Width, col = iris$Species, main = colnames(prob.grid)[1])#
-# contour(x1, x2, matrix(prob.grid[,1], length(x1)), add = TRUE)#
-#
-# plot(iris$Sepal.Length, iris$Sepal.Width, col = iris$Species, main = colnames(prob.grid)[2])#
-# contour(x1, x2, matrix(prob.grid[,2], length(x1)), add = TRUE)#
-#
-# plot(iris$Sepal.Length, iris$Sepal.Width, col = iris$Species, main = colnames(prob.grid)[3])#
-# contour(x1, x2, matrix(prob.grid[,3], length(x1)), add = TRUE)#
-# mod <- e1071:::svm(Species ~ Sepal.Length + Sepal.Width, data = iris, probability = TRUE)#, kernel = "linear")#
-# pred <- e1071:::predict.svm(mod, iris, probability = TRUE)#
-# post <- attr(pred, "probabilities")#
-# spost <- apply(post, 1, sort, decreasing = TRUE)#
-# wf <- gaussian(bw = 0.3)#
-# w <- wf((spost[1,] - spost[2,]))    # largest if both probabilities are equal#
-#
-# plot(iris[,1], iris[,2], col = iris$Species, cex = w*10)#
-# legend("bottomright", legend = levels(iris$Species), col = as.numeric(unique(iris$Species)), lty = 1)#
-# contour(x1, x2, matrix(prob.grid[,1], length(x1)), add = TRUE, label = colnames(prob.grid)[1])#
-# contour(x1, x2, matrix(prob.grid[,2], length(x1)), add = TRUE, label = colnames(prob.grid)[2])#
-# contour(x1, x2, matrix(prob.grid[,3], length(x1)), add = TRUE, label = colnames(prob.grid)[3])#
-#
-# plot(iris[,1], iris[,2], col = iris$Species, cex = w*10)#
-# legend("bottomright", legend = levels(iris$Species), col = as.numeric(unique(iris$Species)), lty = 1)#
-# sprob.grid <- apply(prob.grid, 1, max)#
-# contour(x1, x2, matrix(sprob.grid, length(x1)), add = TRUE, levels = c(0.45, 0.5, 0.55, 0.6))#
-# mod <- dasvm(Species ~ Sepal.Length + Sepal.Width, data = iris, wf = "gaussian", bw = 0.5, method = "prob", probability = TRUE, kernel = "linear")#
-# x1 <- seq(4,8,0.05)#
-# x2 <- seq(2,5,0.05)#
-# mod$case.weights#
-# plot(iris[,1], iris[,2], col = iris$Species, cex = mod$case.weights[[1]]*10)#
-# plot(iris[,1], iris[,2], col = iris$Species, cex = mod$case.weights[[2]]*10)#
-# plot(iris[,1], iris[,2], col = iris$Species, cex = mod$case.weights[[3]]*10)#
-# plot(iris[,1], iris[,2], col = iris$Species, cex = mod$case.weights[[4]]*10)#
-# legend("bottomright", legend = levels(iris$Species), col = as.numeric(unique(iris$Species)), lty = 1)#
-#
-# iris.grid <- expand.grid(Sepal.Length = x1, Sepal.Width = x2)#
-# pred <- predict(mod, newdata = iris.grid, probability = TRUE)#
-# prob.grid <- attr(pred, "probabilities")#
-# contour(x1, x2, matrix(prob.grid[,1], length(x1)), add = TRUE, label = colnames(prob.grid)[1])#
-# contour(x1, x2, matrix(prob.grid[,2], length(x1)), add = TRUE, label = colnames(prob.grid)[2])#
-# contour(x1, x2, matrix(prob.grid[,3], length(x1)), add = TRUE, label = colnames(prob.grid)[3])#
-#=====================================================================================================================#
-#
-# mod1 <- wsvm(Species ~ ., data = iris, probability = TRUE)#
-# predict(mod1, iris, probability = TRUE)#
-#
-# #?e1071:::predict.svm#
-# mod2 <- dasvm(Species ~ ., data = iris, bw = 4)#
-# predict(mod2)#
-# predict(mod2, newdata = iris)#
-# predict(mod2, newdata = iris, decision.values = TRUE)#
-#
-# mod2 <- dasvm(Species ~ ., data = iris, bw = 4, probability = TRUE)#
-# predict(mod2)#
-# predict(mod2, newdata = iris)#
-# predict(mod2, newdata = iris, decision.values = TRUE)#
-# predict(mod2, newdata = iris, probability = TRUE)
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_generatewf.R")
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_kda.R")
-fit1 <- kda(formula = Species ~ ., data = iris, wf = "gaussian", bw = 5)    #
-	fit2 <- kda(formula = Species ~ ., data = iris, wf = gaussian(5))    #
-	fit3 <- kda(x = iris[,-5], grouping = iris$Species, wf = "gaussian", bw = 5)    #
-	fit4 <- kda(x = iris[,-5], grouping = iris$Species, wf = gaussian(5))    #
-	expect_equal(fit1[-c(6, 12)], fit2[-c(6, 12)])#
-	expect_equal(fit3[-c(6, 12)], fit4[-c(6, 12)])#
-	expect_equal(fit2[-c(2,12:14)], fit4[-c(2,12:13)])#
-	expect_equivalent(fit2[2], fit4[2])#
-	pred1 <- predict(fit1)#
-	pred2 <- predict(fit2)#
-	pred3 <- predict(fit3)#
-	pred4 <- predict(fit4)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-fit1 <- kda(formula = Species ~ ., data = iris, wf = "gaussian", bw = 5, k = 30)    #
-	fit2 <- kda(formula = Species ~ ., data = iris, wf = gaussian(bw = 5, k = 30))    #
-	fit3 <- kda(x = iris[,-5], grouping = iris$Species, wf = "gaussian", bw = 5, k = 30)    #
-	fit4 <- kda(x = iris[,-5], grouping = iris$Species, wf = gaussian(5, 30))#
-	expect_equal(fit1[-c(6, 12)], fit2[-c(6, 12)])#
-	expect_equal(fit3[-c(6, 12)], fit4[-c(6, 12)])#
-	expect_equal(fit2[-c(2,12:14)], fit4[-c(2,12:13)])#
-	expect_equivalent(fit2[2], fit4[2])#
-	pred1 <- predict(fit1)#
-	pred2 <- predict(fit2)#
-	pred3 <- predict(fit3)#
-	pred4 <- predict(fit4)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-set.seed(123)	#
-	fit1 <- kda(formula = Species ~ ., data = iris, wf = "gaussian", bw = 5, k = 30)    #
-	set.seed(123)	#
-	fit2 <- kda(formula = Species ~ ., data = iris, wf = gaussian(bw = 5, k = 30))    #
-	set.seed(123)	#
-	fit3 <- kda(x = iris[,-5], grouping = iris$Species, wf = "gaussian", bw = 5, k = 30)    #
-	set.seed(123)	#
-	fit4 <- kda(x = iris[,-5], grouping = iris$Species, wf = gaussian(5, 30))#
-	expect_equal(fit1[-c(6, 12)], fit2[-c(6, 12)])#
-	expect_equal(fit3[-c(6, 12)], fit4[-c(6, 12)])#
-	expect_equal(fit2[-c(2,12:14)], fit4[-c(2,12:13)])#
-	expect_equivalent(fit2[2], fit4[2])#
-	pred1 <- predict(fit1)#
-	pred2 <- predict(fit2)#
-	pred3 <- predict(fit3)#
-	pred4 <- predict(fit4)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-fit1 <- kda(formula = Species ~ ., data = iris, wf = "gaussian", bw = 5, k = 30)    #
-	fit2 <- kda(formula = Species ~ ., data = iris, wf = gaussian(bw = 5, k = 30))    #
-	fit3 <- kda(x = iris[,-5], grouping = iris$Species, wf = "gaussian", bw = 5, k = 30)    #
-	fit4 <- kda(x = iris[,-5], grouping = iris$Species, wf = gaussian(5, 30))#
-	expect_equal(fit1[-c(6, 12)], fit2[-c(6, 12)])#
-	expect_equal(fit3[-c(6, 12)], fit4[-c(6, 12)])#
-	expect_equal(fit2[-c(2,12:14)], fit4[-c(2,12:13)])#
-	expect_equivalent(fit2[2], fit4[2])#
-	set.seed(123)	#
-	pred1 <- predict(fit1)#
-	set.seed(123)	#
-	pred2 <- predict(fit2)#
-	set.seed(123)	#
-	pred3 <- predict(fit3)#
-	set.seed(123)	#
-	pred4 <- predict(fit4)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-fit1 <- kda(formula = Species ~ ., data = iris, wf = "epanechnikov", bw = 5, k = 30)#
-	fit2 <- kda(formula = Species ~ ., data = iris, wf = epanechnikov(bw = 5, k = 30))#
-	fit3 <- kda(x = iris[,-5], grouping = iris$Species, wf = "epanechnikov", bw = 5, k = 30)#
-	fit4 <- kda(x = iris[,-5], grouping = iris$Species, wf = epanechnikov(5, 30))    #
-	expect_equal(fit1[-c(6, 12)], fit2[-c(6, 12)])#
-	expect_equal(fit3[-c(6, 12)], fit4[-c(6, 12)])#
-	expect_equal(fit2[-c(2,12:14)], fit4[-c(2,12:13)])#
-	expect_equivalent(fit2[2], fit4[2])#
-	pred1 <- predict(fit1)#
-	pred2 <- predict(fit2)#
-	pred3 <- predict(fit3)#
-	pred4 <- predict(fit4)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-fit1 <- kda(formula = Species ~ ., data = iris, wf = "epanechnikov", bw = 5, k = 30)#
-	fit2 <- kda(formula = Species ~ ., data = iris, wf = epanechnikov(bw = 5, k = 30))#
-	fit3 <- kda(x = iris[,-5], grouping = iris$Species, wf = "epanechnikov", bw = 5, k = 30)#
-	fit4 <- kda(x = iris[,-5], grouping = iris$Species, wf = epanechnikov(5, 30))    #
-	expect_equal(fit1[-c(6, 12)], fit2[-c(6, 12)])#
-	expect_equal(fit3[-c(6, 12)], fit4[-c(6, 12)])#
-	expect_equal(fit2[-c(2,12:14)], fit4[-c(2,12:13)])#
-	expect_equivalent(fit2[2], fit4[2])#
-	set.seed(123)	#
-	pred1 <- predict(fit1)#
-	set.seed(123)	#
-	pred2 <- predict(fit2)#
-	set.seed(123)	#
-	pred3 <- predict(fit3)#
-	set.seed(123)	#
-	pred4 <- predict(fit4)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-fit1 <- kda(formula = Species ~ ., data = iris, wf = "rectangular", bw = 2, k = 30)#
-	fit2 <- kda(formula = Species ~ ., data = iris, wf = rectangular(bw = 2, k = 30))#
-	fit3 <- kda(x = iris[,-5], grouping = iris$Species, wf = "rectangular", bw = 2, k = 30)#
-	fit4 <- kda(x = iris[,-5], grouping = iris$Species, wf = rectangular(2, 30))    #
-	expect_equal(fit1[-c(6, 12)], fit2[-c(6, 12)])#
-	expect_equal(fit3[-c(6, 12)], fit4[-c(6, 12)])#
-	expect_equal(fit2[-c(2,12:14)], fit4[-c(2,12:13)])#
-	expect_equivalent(fit2[2], fit4[2])#
-	set.seed(120)#
-	pred1 <- predict(fit1)#
-	set.seed(120)#
-	pred2 <- predict(fit2)#
-	set.seed(120)#
-	pred3 <- predict(fit3)#
-	set.seed(120)#
-	pred4 <- predict(fit4)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-fit1 <- kda(formula = Species ~ ., data = iris, wf = "triangular", bw = 5, k = 30)#
-	fit2 <- kda(formula = Species ~ ., data = iris, wf = triangular(5, k = 30))#
-	fit3 <- kda(x = iris[,-5], grouping = iris$Species, wf = "triangular", bw = 5, k = 30)#
-	fit4 <- kda(x = iris[,-5], grouping = iris$Species, wf = triangular(5, 30))    #
-	expect_equal(fit1[-c(6, 12)], fit2[-c(6, 12)])#
-	expect_equal(fit3[-c(6, 12)], fit4[-c(6, 12)])#
-	expect_equal(fit2[-c(2,12:14)], fit4[-c(2,12:13)])#
-	expect_equivalent(fit2[2], fit4[2])#
-	pred1 <- predict(fit1)#
-	pred2 <- predict(fit2)#
-	pred3 <- predict(fit3)#
-	pred4 <- predict(fit4)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-fit1 <- kda(formula = Species ~ ., data = iris, wf = "triangular", bw = 5, k = 30)#
-	fit2 <- kda(formula = Species ~ ., data = iris, wf = triangular(5, k = 30))#
-	fit3 <- kda(x = iris[,-5], grouping = iris$Species, wf = "triangular", bw = 5, k = 30)#
-	fit4 <- kda(x = iris[,-5], grouping = iris$Species, wf = triangular(5, 30))    #
-	expect_equal(fit1[-c(6, 12)], fit2[-c(6, 12)])#
-	expect_equal(fit3[-c(6, 12)], fit4[-c(6, 12)])#
-	expect_equal(fit2[-c(2,12:14)], fit4[-c(2,12:13)])#
-	expect_equivalent(fit2[2], fit4[2])#
-	set.seed(120)#
-	pred1 <- predict(fit1)#
-	set.seed(120)#
-	pred2 <- predict(fit2)#
-	set.seed(120)#
-	pred3 <- predict(fit3)#
-	set.seed(120)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-set.seed(120)#
-	pred1 <- predict(fit1)#
-	set.seed(120)#
-	pred2 <- predict(fit2)#
-	set.seed(120)#
-	pred3 <- predict(fit3)#
-	set.seed(120)#
-	pred4 <- predict(fit4)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-fit1 <- kda(formula = Species ~ ., data = iris, wf = "biweight", bw = 5)#
-	fit2 <- kda(formula = Species ~ ., data = iris, wf = biweight(5))#
-	fit3 <- kda(x = iris[,-5], grouping = iris$Species, wf = "biweight", bw = 5)#
-	fit4 <- kda(x = iris[,-5], grouping = iris$Species, wf = biweight(5))    #
-	expect_equal(fit1[-c(6, 12)], fit2[-c(6, 12)])#
-	expect_equal(fit3[-c(6, 12)], fit4[-c(6, 12)])#
-	expect_equal(fit2[-c(2,12:14)], fit4[-c(2,12:13)])#
-	expect_equivalent(fit2[2], fit4[2])#
-	pred1 <- predict(fit1)#
-	pred2 <- predict(fit2)#
-	pred3 <- predict(fit3)#
-	pred4 <- predict(fit4)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-fit1 <- kda(formula = Species ~ ., data = iris, wf = "optcosine", bw = 5, k = 30)#
-	fit2 <- kda(formula = Species ~ ., data = iris, wf = optcosine(5, k = 30))#
-	fit3 <- kda(x = iris[,-5], grouping = iris$Species, wf = "optcosine", bw = 5, k = 30)#
-	fit4 <- kda(x = iris[,-5], grouping = iris$Species, wf = optcosine(5, 30))    #
-	expect_equal(fit1[-c(6, 12)], fit2[-c(6, 12)])#
-	expect_equal(fit3[-c(6, 12)], fit4[-c(6, 12)])#
-	expect_equal(fit2[-c(2,12:14)], fit4[-c(2,12:13)])#
-	expect_equivalent(fit2[2], fit4[2])#
-	pred1 <- predict(fit1)#
-	pred2 <- predict(fit2)#
-	pred3 <- predict(fit3)#
-	pred4 <- predict(fit4)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-fit1 <- kda(formula = Species ~ ., data = iris, wf = "gaussian", bw = 5)    #
-	fit2 <- kda(formula = Species ~ ., data = iris, wf = gaussian(5))    #
-	fit3 <- kda(x = iris[,-5], grouping = iris$Species, wf = "gaussian", bw = 5)    #
-	fit4 <- kda(x = iris[,-5], grouping = iris$Species, wf = gaussian(5))    #
-	expect_equal(fit1[-c(6, 12)], fit2[-c(6, 12)])#
-	expect_equal(fit3[-c(6, 12)], fit4[-c(6, 12)])#
-	expect_equal(fit2[-c(2,12:14)], fit4[-c(2,12:13)])#
-	expect_equivalent(fit2[2], fit4[2])#
-	set.seed(120)#
-	pred1 <- predict(fit1)#
-	set.seed(120)#
-	pred2 <- predict(fit2)#
-	set.seed(120)#
-	pred3 <- predict(fit3)#
-	set.seed(120)#
-	pred4 <- predict(fit4)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-fit1 <- kda(formula = Species ~ ., data = iris, wf = "gaussian", bw = 5, k = 30)    #
-	fit2 <- kda(formula = Species ~ ., data = iris, wf = gaussian(bw = 5, k = 30))    #
-	fit3 <- kda(x = iris[,-5], grouping = iris$Species, wf = "gaussian", bw = 5, k = 30)    #
-	fit4 <- kda(x = iris[,-5], grouping = iris$Species, wf = gaussian(5, 30))#
-	expect_equal(fit1[-c(6, 12)], fit2[-c(6, 12)])#
-	expect_equal(fit3[-c(6, 12)], fit4[-c(6, 12)])#
-	expect_equal(fit2[-c(2,12:14)], fit4[-c(2,12:13)])#
-	expect_equivalent(fit2[2], fit4[2])#
-	set.seed(123)	#
-	pred1 <- predict(fit1)#
-	set.seed(123)	#
-	pred2 <- predict(fit2)#
-	set.seed(123)	#
-	pred3 <- predict(fit3)#
-	set.seed(123)	#
-	pred4 <- predict(fit4)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-fit1 <- kda(formula = Species ~ ., data = iris, wf = "epanechnikov", bw = 5, k = 30)#
-	fit2 <- kda(formula = Species ~ ., data = iris, wf = epanechnikov(bw = 5, k = 30))#
-	fit3 <- kda(x = iris[,-5], grouping = iris$Species, wf = "epanechnikov", bw = 5, k = 30)#
-	fit4 <- kda(x = iris[,-5], grouping = iris$Species, wf = epanechnikov(5, 30))    #
-	expect_equal(fit1[-c(6, 12)], fit2[-c(6, 12)])#
-	expect_equal(fit3[-c(6, 12)], fit4[-c(6, 12)])#
-	expect_equal(fit2[-c(2,12:14)], fit4[-c(2,12:13)])#
-	expect_equivalent(fit2[2], fit4[2])#
-	set.seed(123)	#
-	pred1 <- predict(fit1)#
-	set.seed(123)	#
-	pred2 <- predict(fit2)#
-	set.seed(123)	#
-	pred3 <- predict(fit3)#
-	set.seed(123)	#
-	pred4 <- predict(fit4)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-fit1 <- kda(formula = Species ~ ., data = iris, wf = "rectangular", bw = 2, k = 30)#
-	fit2 <- kda(formula = Species ~ ., data = iris, wf = rectangular(bw = 2, k = 30))#
-	fit3 <- kda(x = iris[,-5], grouping = iris$Species, wf = "rectangular", bw = 2, k = 30)#
-	fit4 <- kda(x = iris[,-5], grouping = iris$Species, wf = rectangular(2, 30))    #
-	expect_equal(fit1[-c(6, 12)], fit2[-c(6, 12)])#
-	expect_equal(fit3[-c(6, 12)], fit4[-c(6, 12)])#
-	expect_equal(fit2[-c(2,12:14)], fit4[-c(2,12:13)])#
-	expect_equivalent(fit2[2], fit4[2])#
-	set.seed(120)#
-	pred1 <- predict(fit1)#
-	set.seed(120)#
-	pred2 <- predict(fit2)#
-	set.seed(120)#
-	pred3 <- predict(fit3)#
-	set.seed(120)#
-	pred4 <- predict(fit4)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-fit1 <- kda(formula = Species ~ ., data = iris, wf = "triangular", bw = 5, k = 30)#
-	fit2 <- kda(formula = Species ~ ., data = iris, wf = triangular(5, k = 30))#
-	fit3 <- kda(x = iris[,-5], grouping = iris$Species, wf = "triangular", bw = 5, k = 30)#
-	fit4 <- kda(x = iris[,-5], grouping = iris$Species, wf = triangular(5, 30))    #
-	expect_equal(fit1[-c(6, 12)], fit2[-c(6, 12)])#
-	expect_equal(fit3[-c(6, 12)], fit4[-c(6, 12)])#
-	expect_equal(fit2[-c(2,12:14)], fit4[-c(2,12:13)])#
-	expect_equivalent(fit2[2], fit4[2])#
-	set.seed(120)#
-	pred1 <- predict(fit1)#
-	set.seed(120)#
-	pred2 <- predict(fit2)#
-	set.seed(120)#
-	pred3 <- predict(fit3)#
-	set.seed(120)#
-	pred4 <- predict(fit4)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-fit1 <- kda(formula = Species ~ ., data = iris, wf = "biweight", bw = 5)#
-	fit2 <- kda(formula = Species ~ ., data = iris, wf = biweight(5))#
-	fit3 <- kda(x = iris[,-5], grouping = iris$Species, wf = "biweight", bw = 5)#
-	fit4 <- kda(x = iris[,-5], grouping = iris$Species, wf = biweight(5))    #
-	expect_equal(fit1[-c(6, 12)], fit2[-c(6, 12)])#
-	expect_equal(fit3[-c(6, 12)], fit4[-c(6, 12)])#
-	expect_equal(fit2[-c(2,12:14)], fit4[-c(2,12:13)])#
-	expect_equivalent(fit2[2], fit4[2])#
-	set.seed(120)#
-	pred1 <- predict(fit1)#
-	set.seed(120)#
-	pred2 <- predict(fit2)#
-	set.seed(120)#
-	pred3 <- predict(fit3)#
-	set.seed(120)#
-	pred4 <- predict(fit4)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-fit1 <- kda(formula = Species ~ ., data = iris, wf = "optcosine", bw = 5, k = 30)#
-	fit2 <- kda(formula = Species ~ ., data = iris, wf = optcosine(5, k = 30))#
-	fit3 <- kda(x = iris[,-5], grouping = iris$Species, wf = "optcosine", bw = 5, k = 30)#
-	fit4 <- kda(x = iris[,-5], grouping = iris$Species, wf = optcosine(5, 30))    #
-	expect_equal(fit1[-c(6, 12)], fit2[-c(6, 12)])#
-	expect_equal(fit3[-c(6, 12)], fit4[-c(6, 12)])#
-	expect_equal(fit2[-c(2,12:14)], fit4[-c(2,12:13)])#
-	expect_equivalent(fit2[2], fit4[2])#
-	set.seed(120)#
-	pred1 <- predict(fit1)#
-	set.seed(120)#
-	pred2 <- predict(fit2)#
-	set.seed(120)#
-	pred3 <- predict(fit3)#
-	set.seed(120)#
-	pred4 <- predict(fit4)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-fit1 <- kda(formula = Species ~ ., data = iris, wf = "cosine", bw = 5, k = 30)#
-	fit2 <- kda(formula = Species ~ ., data = iris, wf = cosine(5, k = 30))#
-	fit3 <- kda(x = iris[,-5], grouping = iris$Species, wf = "cosine", bw = 5, k = 30)#
-	fit4 <- kda(x = iris[,-5], grouping = iris$Species, wf = cosine(5, 30))    #
-	expect_equal(fit1[-c(6, 12)], fit2[-c(6, 12)])#
-	expect_equal(fit3[-c(6, 12)], fit4[-c(6, 12)])#
-	expect_equal(fit2[-c(2,12:14)], fit4[-c(2,12:13)])#
-	expect_equivalent(fit2[2], fit4[2])#
-	set.seed(120)#
-	pred1 <- predict(fit1)#
-	set.seed(120)#
-	pred2 <- predict(fit2)#
-	set.seed(120)#
-	pred3 <- predict(fit3)#
-	set.seed(120)#
-	pred4 <- predict(fit4)#
-	expect_equal(pred1, pred2)#
-	expect_equal(pred3, pred4)#
-	expect_equal(pred2, pred4)
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_kda.R")
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_mobConstantModel.R")
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_mobMultinomModel.R")
-library(locClassData)#
-	data <- xor3Data(1000)#
-	## decay = 0#
-	fit <- mob(y ~ x.1 + x.2 | x.1 + x.2, data = data, model = multinomModel, trace = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 200))#
-	tr <- mean(predict(fit) != data$y)#
-	ba <- mean(xor3BayesClass(data$x) != data$y)#
-	expect_true(tr < ba + 0.05)#
-	## gradient#
-	pr <- predict(fit, out = "posterior")#
-	pr <- do.call("rbind", pr)#
-	pr <- pr[,-1]#
-	y <- diag(3)		#
-	y <- y[as.numeric(data$y),]#
-	y <- y[,-1]#
-	delta <- pr - y#
-	splits <- predict(fit, type = "node")#
-	S <- unique(splits)#
-	for (s in S) {#
-		gr1 <- (delta[,rep(1:2, each = 3)] * cbind(1, data$x)[,rep(1:3, 2)])[splits == s,]#
-		dimnames(gr1) <- NULL#
-		gr2 <- nodes(fit, s)[[1]]$model$gradient[splits == s,]#
-		expect_equal(gr1, gr2)#
-	}
-decay > 0#
-	decay = 0.5#
-	fit <- mob(y ~ x.1 + x.2 | x.1 + x.2, data = data, model = multinomModel, trace = FALSE, decay = decay,#
-		control = mob_control(objfun = deviance, minsplit = 200))#
-	tr <- mean(predict(fit) != data$y)#
-	ba <- mean(xor3BayesClass(data$x) != data$y)#
-	expect_true(tr < ba + 0.05)	#
-	## gradient#
-	pr <- predict(fit, out = "posterior")#
-	pr <- do.call("rbind", pr)#
-	pr <- pr[,-1]#
-	y <- diag(3)		#
-	y <- y[as.numeric(data$y),]#
-	y <- y[,-1]#
-	delta <- pr - y#
-	splits <- predict(fit, type = "node")#
-	S <- unique(splits)#
-	for (s in S) {#
-		model <- nodes(fit,s)[[1]]$model#
-		gr1 <- (delta[,rep(1:2, each = 3)] * cbind(1, data$x)[,rep(1:3, 2)])[splits == s,]#
-		dimnames(gr1) <- NULL#
-		reg <- as.vector(t(2 * decay/sum(weights(model)) * coef(model)))#
-		gr1 <- t(t(gr1) + reg)	#
-		gr2 <- model$gradient[splits == s,]#
-		expect_equal(gr1, gr2)#
-	}
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_mobMultinomModel.R")
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_mobNnetModel.R")
-options(error = recover)
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_mobNnetModel.R")
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_mobConstantModel.R")
-mob(y ~ Sepal.Length | Sepal.Width, data = iris, model = constantModel, control = mob_control(objfun = deviance, minsplit = 20))
-wrong variable names#
-	expect_that(mob(Species ~ V1 | Sepal.Length, data = iris, model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 20)), throws_error("Objekt 'V1' nicht gefunden"))
-expect_that(mob(Species ~ Sepal.Length | V1, data = iris, model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 20)), throws_error("Objekt 'V1' nicht gefunden"))
-expect_that(mob(y ~ Sepal.Length | Sepal.Width, data = iris, model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 20)), throws_error("Objekt 'y' nicht gefunden"))
-test_that("binary problem", {#
-	library(locClassData)#
-	data <- vData(500)#
-	fit <- mob(y ~ x.1 + x.2 | x.1 + x.2, data = data, model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 50))#
-	tr <- mean(predict(fit) != data$y)#
-	ba <- mean(vBayesClass(data$x) != data$y)#
-	expect_true(tr < ba + 0.05)	#
-})#
-test_that("multi-class problem", {#
-	library(locClassData)#
-	data <- xor3Data(1000)#
-	fit <- mob(y ~ x.1 + x.2 | x.1 + x.2, data = data, model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 50))#
-	tr <- mean(predict(fit) != data$y)#
-	ba <- mean(xor3BayesClass(data$x) != data$y)#
-	expect_true(tr < ba + 0.05)	#
-## does not work for xor problem !!!#
-})#
-test_that("mobConstantModel throws a warning if grouping variable is numeric", {#
-	expect_that(fit <- mob(Petal.Width ~ . | Sepal.Length, data = iris, model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 20)), gives_warning("'grouping' was coerced to a factor"))#
-})#
-test_that("mobConstantModel works if only one predictor variable is given", {#
-	fit <- mob(Species ~ Sepal.Width | Sepal.Length, data = iris, model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 20))#
-})#
-test_that("mobConstantModel: Local and global solution coincide if minsplit is large", {#
-	library(locClassData)#
-	data <- vData(500)#
-	fit <- mob(y ~ x.1 + x.2 | x.1 + x.2, data = data, model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 500))#
-	w <- constant(y ~ ., data = as.data.frame(data))#
-	expect_equal(fit@tree$model$prior, w$prior)#
-	pred <- predict(fit)#
-	p <- predict(w)#
-	expect_equal(pred, as.numeric(p$class))#
-})#
-test_that("mobConstantModel: training data from only one class", {#
-	expect_that(fit <- mob(Species ~ Sepal.Width | Sepal.Length, data = iris[1:50,], model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 20)), throws_error("training data from only one group given"))#
-	## error in global fit (later on nodes containing observations from one single class are, of course, allowed)#
-})#
-#=================================================================================================================#
-context("predict.constantModel")#
-#
-test_that("predict.constantModel works correctly with formula interface and with missing newdata", {#
-	ran <- sample(1:150,100)#
-	## formula, data#
-	fit <- mob(Species ~ . | Sepal.Length, data = iris[ran,], model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 5))#
-  	pred <- predict(fit)#
-	mean(pred != as.numeric(iris$Species[ran]))#
-  	pred <- predict(fit, out = "posterior")#
-  	p <- matrix(0, length(pred), 3)#
-	colnames(p) = levels(iris$Species)#
-	rownames(p) = sapply(pred, rownames)#
-	for (i in seq_along(pred)) {#
-		p[i, colnames(pred[[i]])] = pred[[i]]#
-	}#
-  	expect_equal(rownames(p), rownames(iris)[ran])  	#
-	## formula, data, newdata#
-	p <- predict(fit, newdata = iris[-ran,])#
-	mean(p != as.numeric(iris$Species[-ran]))#
-})#
-test_that("predict.constantModel: retrieving training data works", {#
-	## no subset#
-	# formula, data#
-	fit <- mob(Species ~ . | Sepal.Length, data = iris, model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 2,))#
-  	pred1 <- predict(fit)#
-  	pred2 <- predict(fit, newdata = iris)#
-  	expect_equal(pred1, pred2)#
-	## subset#
-	ran <- sample(1:150,100)#
-	# formula, data#
-	fit <- mob(Species ~ . | Sepal.Length, data = iris[ran,], model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 20))	#
-  	pred1 <- predict(fit)#
-  	pred2 <- predict(fit, newdata = iris[ran,])#
-  	expect_equal(pred1, pred2)#
-})#
-test_that("predict.constantModel works with missing classes in the training data", {#
-	ran <- sample(1:150,100)#
-	fit <- mob(Species ~ . | Sepal.Length, data = iris[1:60,], model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 2))#
-	# leading minor not positive definite: reason: pure terminal node#
-	pred <- predict(fit, newdata = iris[-ran,])#
-	pred <- predict(fit, newdata = iris[-ran,], out = "posterior")#
-	# expect_equal(nlevels(pred$class), 3)#
-	# expect_equal(ncol(pred$posterior), 2)#
-})#
-test_that("predict.constantModel works with one single predictor variable", {#
-	ran <- sample(1:150,100)#
-	fit <- mob(Species ~ Sepal.Width | Sepal.Width, data = iris[ran,], model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 20))	#
-	# expect_equal(ncol(fit$means), 1)#
-	# expect_equal(dim(fit$cov), rep(1, 2))#
-	predict(fit, newdata = iris[-ran,])#
-})#
-test_that("predict.constantModel works with one single test observation", {#
-	ran <- sample(1:150,100)#
-	fit <- mob(Species ~ Sepal.Width | Sepal.Width, data = iris[ran,], model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 20))	#
-  	pred <- predict(fit, newdata = iris[5,])#
-	expect_equal(length(pred), 1)#
-  	pred <- predict(fit, newdata = iris[5,], out = "posterior")#
-	expect_equal(nrow(pred[[1]]), 1)#
-})	#
-test_that("predict.constantModel: NA handling in newdata works", {#
-	## NAs in explanatory variables are ok#
-	ran <- sample(1:150,100)#
-	irisna <- iris#
-	irisna[1:17,c(1,3)] <- NA#
-	fit <- mob(Species ~ . | Sepal.Width, data = iris[ran,], model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 30))#
-	pred <- predict(fit, newdata = irisna) #
-	## no NAs in pred since in constant model the explanatory variables are not used for prediction#
-	## NAs in splitting variable are not ok#
-	irisna[1:17,1:3] <- NA#
-	fit <- mob(Species ~ . | Sepal.Width, data = iris[ran,], model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 30))#
-	expect_error(pred <- predict(fit, newdata = irisna)) #
-	## error: VECTOR_ELT() can only be applied to a 'list', not a 'NULL'#
-})#
-test_that("predict.constantModel: misspecified arguments", {#
-	ran <- sample(1:150,100)#
-	fit <- mob(Species ~ . | Sepal.Width, data = iris[ran,], model = constantModel,#
-		control = mob_control(objfun = deviance, minsplit = 20))	#
-    # errors in newdata#
-    expect_error(predict(fit, newdata = TRUE))#
-    expect_error(predict(fit, newdata = -50:50))#
-})
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_mobConstantModel.R")
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_mobMultinomModel.R")
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_mobSvmModel.R")
-test_that("binary problem", {#
-	library(locClassData)#
-	data <- vData(500)#
-	fit <- mob(y ~ x.1 + x.2 | x.1 + x.2, data = data, model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 200))#
-	tr <- mean(predict(fit) != data$y)#
-	ba <- mean(vBayesClass(data$x) != data$y)#
-	expect_true(tr < ba + 0.05)	#
-})#
-test_that("multi-class problem", {#
-	library(locClassData)#
-	data <- xor3Data(1000)#
-	fit <- mob(y ~ x.1 + x.2 | x.1 + x.2, data = data, model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 200))#
-	tr <- mean(predict(fit) != data$y)#
-	ba <- mean(xor3BayesClass(data$x) != data$y)#
-	expect_true(tr < ba + 0.07)	#
-})#
-test_that("mobSvmModel throws a warning if grouping variable is numeric", {#
-	iris$Species <- as.numeric(iris$Species)#
-	fit <- mob(Species ~ . | Sepal.Length, data = iris, model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20)) #
-})#
-test_that("mobSvmModel works if only one predictor variable is given", {#
-	expect_that(fit <- mob(Species ~ Sepal.Width | Sepal.Length, data = iris, model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20)), gives_warning("some groups are empty"))#
-	terminal <- nodes(fit, max(where(fit)))#
-	expect_equal(length(terminal[[1]]$model$scale[[1]]), 1)#
-})#
-test_that("mobSvmModel: Local and global solution coincide if minsplit is large", {#
-	library(locClassData)#
-	data <- vData(500)#
-	fit <- mob(y ~ x.1 + x.2 | x.1 + x.2, data = data, model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 500))#
-	w <- wsvm(y ~ ., data = as.data.frame(data), kernel = "linear", fitted = FALSE)#
-	expect_equal(fit@tree$model$coefs, w$coefs)#
-	expect_equal(fit@tree$model$SV, w$SV)#
-	expect_equal(fit@tree$model$obj, w$obj)#
-	pred <- predict(fit)#
-	p <- predict(w, newdata = as.data.frame(data))#
-	expect_equal(pred, as.numeric(p))#
-})#
-test_that("mobSvmModel: training data from only one class", {#
-	expect_that(fit <- mob(Species ~ Sepal.Width | Sepal.Length, data = iris[1:50,], model = svmModel, kernel = "linear", #
-		control = mob_control(objfun = deviance, minsplit = 20)), throws_error("need training data from at least two classes"))#
-	## error in global fit#
-})#
-test_that("mobSvmModel: additional arguments", {#
-	fit <- mob(Species ~ Sepal.Width | Sepal.Length, data = iris, model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20))#
-	terminal <- nodes(fit, max(where(fit)))#
-	expect_equal(terminal[[1]]$model$kernel, 0)#
-	expect_true(is.null(terminal[[1]]$model$fitted))#
-#
-	fit <- mob(Species ~ Sepal.Width | Sepal.Length, data = iris, model = svmModel, fitted = TRUE,#
-		kernel = "polynomial", degree = 2, probability = TRUE, control = mob_control(objfun = deviance, minsplit = 20))#
-	terminal <- nodes(fit, max(where(fit)))#
-	expect_equal(terminal[[1]]$model$kernel, 1)#
-	expect_equal(terminal[[1]]$model$degree, 2)#
-	expect_equal(length(terminal[[1]]$model$fitted), 150)#
-	expect_true(terminal[[1]]$model$compprob)#
-	expect_equal(length(terminal[[1]]$model$probA), 3)#
-	expect_equal(length(terminal[[1]]$model$probB), 3)#
-})#
-#=================================================================================================================#
-context("predict.svmModel")#
-#
-test_that("predict.svmModel works correctly with formula interface and with missing newdata", {#
-	ran <- sample(1:150,100)#
-	## formula, data#
-	fit <- mob(Species ~ . | Sepal.Length, data = iris[ran,], model = svmModel, kernel = "linear", fitted = FALSE,#
-		probability = TRUE, control = mob_control(objfun = deviance, minsplit = 2))	#
-  	pred <- predict(fit)#
-  	pred <- predict(fit, out = "posterior")#
-	expect_equal(sapply(pred, sum), rep(1, 100))#
-  	p <- matrix(0, length(pred), 3)#
-	colnames(p) = levels(iris$Species)#
-	rownames(p) = sapply(pred, rownames)#
-	for (i in seq_along(pred)) {#
-		p[i, colnames(pred[[i]])] = pred[[i]]#
-	}#
-  	expect_equal(rownames(p), rownames(iris)[ran])  	#
-  	pred <- predict(fit, out = "decision")#
-	## formula, data, newdata#
-  	predict(fit, newdata = iris[-ran,])#
-})#
-test_that("predict.svmModel: retrieving training data works", {#
-	## no subset#
-	# formula, data#
-	fit <- mob(Species ~ . | Sepal.Length, data = iris, model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20))#
-  	pred1 <- predict(fit)#
-  	pred2 <- predict(fit, newdata = iris)#
-  	expect_equal(pred1, pred2)#
-	## subset#
-	ran <- sample(1:150,100)#
-	# formula, data#
-	fit <- mob(Species ~ . | Sepal.Length, data = iris[ran,], model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20))	#
-  	pred1 <- predict(fit)#
-  	pred2 <- predict(fit, newdata = iris[ran,])#
-  	expect_equal(pred1, pred2)#
-})#
-test_that("predict.svmModel works with missing classes in the training data", {#
-	ran <- sample(1:150,100)#
-	fit <- mob(Species ~ . | Sepal.Length, data = iris[1:100,], model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20))					#
-	pred <- predict(fit, newdata = iris[-ran,])#
-	expect_equal(length(unique(pred)), 2)#
-	pred <- predict(fit, newdata = iris[-ran,], out = "posterior")#
-	expect_equal(ncol(pred[[1]]), 2)#
-})#
-test_that("predict.svmModel works with one single predictor variable", {#
-	ran <- sample(1:150,100)#
-	fit <- mob(Species ~ Sepal.Width | Sepal.Width, data = iris[ran,], model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20))#
-	terminal <- nodes(fit, max(where(fit)))#
-	expect_equal(length(terminal[[1]]$model$x.scale[["scaled:center"]]), 1)#
-	expect_equal(length(terminal[[1]]$model$x.scale[["scaled:scale"]]), 1)#
-	expect_equal(ncol(terminal[[1]]$model$SV), 1)#
-	predict(fit, newdata = iris[-ran,])#
-})#
-test_that("predict.svmModel works with one single test observation", {#
-	ran <- sample(1:150,100)#
-	fit <- mob(Species ~ . | Sepal.Width, data = iris[ran,], model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20))	#
-  	pred <- predict(fit, newdata = iris[5,])#
-	expect_equal(length(pred), 1)#
-  	pred <- predict(fit, newdata = iris[5,], out = "posterior")#
-	expect_equal(dim(pred[[1]]), c(1, 3))#
-})	#
-test_that("predict.svmModel: NA handling in newdata works", {#
-	## NAs in explanatory variables are ok#
-	ran <- sample(1:150,100)#
-	irisna <- iris#
-	irisna[1:17,c(1,3)] <- NA#
-	fit <- mob(Species ~ . | Sepal.Width, data = iris[ran,], model = svmModel, kernel = "linear", fitted = FALSE,#
-		probability = TRUE, control = mob_control(objfun = deviance, minsplit = 10))#
-	pred <- predict(fit, newdata = irisna)#
-	expect_true(all(is.na(pred[1:17])))#
-	pred <- predict(fit, newdata = irisna, out = "posterior")#
-	expect_true(all(sapply(pred[1:17], is.na)))#
-	pred <- predict(fit, newdata = irisna, out = "decision")#
-	expect_true(all(sapply(pred[1:17], is.na)))#
-#
-	## NAs in splitting variable are not ok#
-	irisna[1:17,1:3] <- NA#
-	fit <- mob(Species ~ . | Sepal.Width, data = iris[ran,], model = ldaModel,#
-		control = mob_control(objfun = deviance, minsplit = 30))#
-	expect_error(pred <- predict(fit, newdata = irisna)) #
-	## error: VECTOR_ELT() can only be applied to a 'list', not a 'NULL'#
-#
-})#
-test_that("predict.svmModel: misspecified arguments", {#
-	ran <- sample(1:150,100)#
-	fit <- mob(Species ~ . | Sepal.Width, data = iris[ran,], model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20))	#
-    # errors in newdata#
-    expect_error(predict(fit, newdata = TRUE))#
-    expect_error(predict(fit, newdata = -50:50))#
-})
-ran <- sample(1:150,100)irisna <- iris
-ran <- sample(1:150,100)
-irisna <- iris
-fit <- mob(Species ~ . | Sepal.Width, data = iris[ran,], model = ldaModel,
-control = mob_control(objfun = deviance, minsplit = 30))
-expect_error(pred <- predict(fit, newdata = irisna))
-head(irisna)
-irisna[1:17,1:3] <- NA
-fit <- mob(Species ~ . | Sepal.Width, data = iris[ran,], model = ldaModel,
-control = mob_control(objfun = deviance, minsplit = 30))
-expect_error(pred <- predict(fit, newdata = irisna))
-ran <- sample(1:150,100)#
-	irisna <- iris#
-	irisna[1:17,c(1,3)] <- NA#
-	fit <- mob(Species ~ . | Sepal.Width, data = iris[ran,], model = svmModel, kernel = "linear", fitted = FALSE,#
-		probability = TRUE, control = mob_control(objfun = deviance, minsplit = 10))
-pred <- predict(fit, newdata = irisna)
-all(is.na(pred[1:17]))
-pred <- predict(fit, newdata = irisna, out = "posterior")
-all(sapply(pred[1:17], is.na))
-pred[1:17]
-sapply(pred[1:17], is.na)
-expect_true(all(unlist(sapply(pred[1:17], is.na))))
-pred <- predict(fit, newdata = irisna, out = "decision")
-all(sapply(pred[1:17], is.na))
-pred
-sapply(pred[1:17], is.na)
-expect_true(all(unlist(sapply(pred[1:17], is.na))))
-test_that("predict.svmModel: NA handling in newdata works", {#
-	## NAs in explanatory variables are ok#
-	ran <- sample(1:150,100)#
-	irisna <- iris#
-	irisna[1:17,c(1,3)] <- NA#
-	fit <- mob(Species ~ . | Sepal.Width, data = iris[ran,], model = svmModel, kernel = "linear", fitted = FALSE,#
-		probability = TRUE, control = mob_control(objfun = deviance, minsplit = 10))#
-	pred <- predict(fit, newdata = irisna)#
-	expect_true(all(is.na(pred[1:17])))#
-	pred <- predict(fit, newdata = irisna, out = "posterior")#
-	expect_true(all(unlist(sapply(pred[1:17], is.na))))#
-	pred <- predict(fit, newdata = irisna, out = "decision")#
-	expect_true(all(unlist(sapply(pred[1:17], is.na))))#
-#
-	## NAs in splitting variable are not ok#
-	irisna[1:17,1:3] <- NA#
-	fit <- mob(Species ~ . | Sepal.Width, data = iris[ran,], model = ldaModel,#
-		control = mob_control(objfun = deviance, minsplit = 30))#
-	expect_error(pred <- predict(fit, newdata = irisna)) #
-	## error: VECTOR_ELT() can only be applied to a 'list', not a 'NULL'#
-#
-})
-test_that("predict.svmModel: misspecified arguments", {#
-	ran <- sample(1:150,100)#
-	fit <- mob(Species ~ . | Sepal.Width, data = iris[ran,], model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20))	#
-    # errors in newdata#
-    expect_error(predict(fit, newdata = TRUE))#
-    expect_error(predict(fit, newdata = -50:50))#
-})
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_mobSvmModel.R")
-test_that("binary problem", {#
-	library(locClassData)#
-	data <- vData(500)#
-	fit <- mob(y ~ x.1 + x.2 | x.1 + x.2, data = data, model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 200))#
-	tr <- mean(predict(fit) != data$y)#
-	ba <- mean(vBayesClass(data$x) != data$y)#
-	expect_true(tr < ba + 0.05)	#
-})#
-test_that("multi-class problem", {#
-	library(locClassData)#
-	data <- xor3Data(1000)#
-	fit <- mob(y ~ x.1 + x.2 | x.1 + x.2, data = data, model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 200))#
-	tr <- mean(predict(fit) != data$y)#
-	ba <- mean(xor3BayesClass(data$x) != data$y)#
-	expect_true(tr < ba + 0.07)	#
-})#
-test_that("mobSvmModel throws a warning if grouping variable is numeric", {#
-	iris$Species <- as.numeric(iris$Species)#
-	fit <- mob(Species ~ . | Sepal.Length, data = iris, model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20)) #
-})#
-test_that("mobSvmModel works if only one predictor variable is given", {#
-	expect_that(fit <- mob(Species ~ Sepal.Width | Sepal.Length, data = iris, model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20)), gives_warning("some groups are empty"))#
-	terminal <- nodes(fit, max(where(fit)))#
-	expect_equal(length(terminal[[1]]$model$scale[[1]]), 1)#
-})#
-test_that("mobSvmModel: Local and global solution coincide if minsplit is large", {#
-	library(locClassData)#
-	data <- vData(500)#
-	fit <- mob(y ~ x.1 + x.2 | x.1 + x.2, data = data, model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 500))#
-	w <- wsvm(y ~ ., data = as.data.frame(data), kernel = "linear", fitted = FALSE)#
-	expect_equal(fit@tree$model$coefs, w$coefs)#
-	expect_equal(fit@tree$model$SV, w$SV)#
-	expect_equal(fit@tree$model$obj, w$obj)#
-	pred <- predict(fit)#
-	p <- predict(w, newdata = as.data.frame(data))#
-	expect_equal(pred, as.numeric(p))#
-})#
-test_that("mobSvmModel: training data from only one class", {#
-	expect_that(fit <- mob(Species ~ Sepal.Width | Sepal.Length, data = iris[1:50,], model = svmModel, kernel = "linear", #
-		control = mob_control(objfun = deviance, minsplit = 20)), throws_error("need training data from at least two classes"))#
-	## error in global fit#
-})#
-test_that("mobSvmModel: additional arguments", {#
-	fit <- mob(Species ~ Sepal.Width | Sepal.Length, data = iris, model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20))#
-	terminal <- nodes(fit, max(where(fit)))#
-	expect_equal(terminal[[1]]$model$kernel, 0)#
-	expect_true(is.null(terminal[[1]]$model$fitted))#
-#
-	fit <- mob(Species ~ Sepal.Width | Sepal.Length, data = iris, model = svmModel, fitted = TRUE,#
-		kernel = "polynomial", degree = 2, probability = TRUE, control = mob_control(objfun = deviance, minsplit = 20))#
-	terminal <- nodes(fit, max(where(fit)))#
-	expect_equal(terminal[[1]]$model$kernel, 1)#
-	expect_equal(terminal[[1]]$model$degree, 2)#
-	expect_equal(length(terminal[[1]]$model$fitted), 150)#
-	expect_true(terminal[[1]]$model$compprob)#
-	expect_equal(length(terminal[[1]]$model$probA), 3)#
-	expect_equal(length(terminal[[1]]$model$probB), 3)#
-})#
-#=================================================================================================================#
-context("predict.svmModel")#
-#
-test_that("predict.svmModel works correctly with formula interface and with missing newdata", {#
-	ran <- sample(1:150,100)#
-	## formula, data#
-	fit <- mob(Species ~ . | Sepal.Length, data = iris[ran,], model = svmModel, kernel = "linear", fitted = FALSE,#
-		probability = TRUE, control = mob_control(objfun = deviance, minsplit = 2))	#
-  	pred <- predict(fit)#
-  	pred <- predict(fit, out = "posterior")#
-	expect_equal(sapply(pred, sum), rep(1, 100))#
-  	p <- matrix(0, length(pred), 3)#
-	colnames(p) = levels(iris$Species)#
-	rownames(p) = sapply(pred, rownames)#
-	for (i in seq_along(pred)) {#
-		p[i, colnames(pred[[i]])] = pred[[i]]#
-	}#
-  	expect_equal(rownames(p), rownames(iris)[ran])  	#
-  	pred <- predict(fit, out = "decision")#
-	## formula, data, newdata#
-  	predict(fit, newdata = iris[-ran,])#
-})#
-test_that("predict.svmModel: retrieving training data works", {#
-	## no subset#
-	# formula, data#
-	fit <- mob(Species ~ . | Sepal.Length, data = iris, model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20))#
-  	pred1 <- predict(fit)#
-  	pred2 <- predict(fit, newdata = iris)#
-  	expect_equal(pred1, pred2)#
-	## subset#
-	ran <- sample(1:150,100)#
-	# formula, data#
-	fit <- mob(Species ~ . | Sepal.Length, data = iris[ran,], model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20))	#
-  	pred1 <- predict(fit)#
-  	pred2 <- predict(fit, newdata = iris[ran,])#
-  	expect_equal(pred1, pred2)#
-})#
-test_that("predict.svmModel works with missing classes in the training data", {#
-	ran <- sample(1:150,100)#
-	fit <- mob(Species ~ . | Sepal.Length, data = iris[1:100,], model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20))					#
-	pred <- predict(fit, newdata = iris[-ran,])#
-	expect_equal(length(unique(pred)), 2)#
-	pred <- predict(fit, newdata = iris[-ran,], out = "posterior")#
-	expect_equal(ncol(pred[[1]]), 2)#
-})#
-test_that("predict.svmModel works with one single predictor variable", {#
-	ran <- sample(1:150,100)#
-	fit <- mob(Species ~ Sepal.Width | Sepal.Width, data = iris[ran,], model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20))#
-	terminal <- nodes(fit, max(where(fit)))#
-	expect_equal(length(terminal[[1]]$model$x.scale[["scaled:center"]]), 1)#
-	expect_equal(length(terminal[[1]]$model$x.scale[["scaled:scale"]]), 1)#
-	expect_equal(ncol(terminal[[1]]$model$SV), 1)#
-	predict(fit, newdata = iris[-ran,])#
-})#
-test_that("predict.svmModel works with one single test observation", {#
-	ran <- sample(1:150,100)#
-	fit <- mob(Species ~ . | Sepal.Width, data = iris[ran,], model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20))	#
-  	pred <- predict(fit, newdata = iris[5,])#
-	expect_equal(length(pred), 1)#
-  	pred <- predict(fit, newdata = iris[5,], out = "posterior")#
-	expect_equal(dim(pred[[1]]), c(1, 3))#
-})	#
-test_that("predict.svmModel: NA handling in newdata works", {#
-	## NAs in explanatory variables are ok#
-	ran <- sample(1:150,100)#
-	irisna <- iris#
-	irisna[1:17,c(1,3)] <- NA#
-	fit <- mob(Species ~ . | Sepal.Width, data = iris[ran,], model = svmModel, kernel = "linear", fitted = FALSE,#
-		probability = TRUE, control = mob_control(objfun = deviance, minsplit = 10))#
-	pred <- predict(fit, newdata = irisna)#
-	expect_true(all(is.na(pred[1:17])))#
-	pred <- predict(fit, newdata = irisna, out = "posterior")#
-	expect_true(all(unlist(sapply(pred[1:17], is.na))))#
-	pred <- predict(fit, newdata = irisna, out = "decision")#
-	expect_true(all(unlist(sapply(pred[1:17], is.na))))#
-#
-	## NAs in splitting variable are not ok#
-	irisna[1:17,1:3] <- NA#
-	fit <- mob(Species ~ . | Sepal.Width, data = iris[ran,], model = ldaModel,#
-		control = mob_control(objfun = deviance, minsplit = 30))#
-	expect_error(pred <- predict(fit, newdata = irisna)) #
-	## error: VECTOR_ELT() can only be applied to a 'list', not a 'NULL'#
-#
-})#
-test_that("predict.svmModel: misspecified arguments", {#
-	ran <- sample(1:150,100)#
-	fit <- mob(Species ~ . | Sepal.Width, data = iris[ran,], model = svmModel, kernel = "linear", fitted = FALSE,#
-		control = mob_control(objfun = deviance, minsplit = 20))	#
-    # errors in newdata#
-    expect_error(predict(fit, newdata = TRUE))#
-    expect_error(predict(fit, newdata = -50:50))#
-})
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_oslda.R")
-c
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_oslda.R")
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_osnnet.R")
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_osqda.R")
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_ossvm.R")
-all classes, correct order#
-	data(iris)#
-	iris[,1:4] <- scale(iris[,1:4])#
-	k <- 100#
-	n <- 90#
-	x <- as.matrix(iris[,-5])#
-	dist <- sqrt(colSums((t(x) - x[n,])^2))#
-	w <- rectangular(k = k)(dist)#
-	fit1 <- wsvm(Species ~ ., data = iris, case.weights = w/sum(w) * 150, probability = TRUE, scale = FALSE)#
-	set.seed(120)#
-	pred1 <- predict(fit1, newdata = iris[n,], probability = TRUE, decision.values = TRUE)#
-	fit2 <- ossvm(Species ~ ., data = iris, probability = TRUE, wf = "rectangular", k = k, scale = FALSE)#
-	set.seed(120)#
-	pred2 <- predict(fit2, newdata = iris[n,], probability = TRUE, decision.values = TRUE)#
-	expect_equal(pred1, pred2)				# not exactly equal
-all classes, but different order 1#
-	data(iris)#
-	iris[,1:4] <- scale(iris[,1:4])#
-	perm <- 150:1  ## 3, 2, 1#
-	iris <- iris[perm,]#
-	k = 100#
-	n <- 90#
-	x <- as.matrix(iris[,-5])#
-	dist <- sqrt(colSums((t(x) - x[n,])^2))#
-	w <- rectangular(k = k)(dist)
-fit1 <- wsvm(Species ~ ., data = iris, case.weights = w/sum(w) * 150, probability = TRUE, scale = FALSE)#
-	set.seed(120)#
-	pred1 <- predict(fit1, newdata = iris[n,], probability = TRUE, decision.values = TRUE)#
-	fit2 <- ossvm(Species ~ ., data = iris, probability = TRUE, wf = "rectangular", k = k, scale = FALSE)#
-	set.seed(120)#
-	pred2 <- predict(fit2, newdata = iris[n,], probability = TRUE, decision.values = TRUE)#
-	expect_equivalent(pred1, pred2)	#
-	expect_equal(attr(pred1, "probabilities"), attr(pred2, "probabilities")[,3:1, drop = FALSE])				# not exactly equal	#
-	expect_equal(as.vector(attr(pred1, "decision.values")), -as.vector(attr(pred2, "decision.values")[,3:1]))
-data(iris)#
-	iris[,1:4] <- scale(iris[,1:4])#
-	perm <- c(150:101,1:100)  ## 3, 1, 2#
-	iris <- iris[perm,]#
-	k = 100#
-	n <- 90#
-	x <- as.matrix(iris[,-5])#
-	dist <- sqrt(colSums((t(x) - x[n,])^2))#
-	w <- rectangular(k = k)(dist)
-pred1
-pred2
-all classes, correct order#
-	data(iris)#
-	iris[,1:4] <- scale(iris[,1:4])#
-	k <- 100#
-	n <- 90#
-	x <- as.matrix(iris[,-5])#
-	dist <- sqrt(colSums((t(x) - x[n,])^2))#
-	w <- rectangular(k = k)(dist)#
-	fit1 <- wsvm(Species ~ ., data = iris, case.weights = w/sum(w) * 150, probability = TRUE, scale = FALSE)#
-	set.seed(120)#
-	pred1 <- predict(fit1, newdata = iris[n,], probability = TRUE, decision.values = TRUE)#
-	fit2 <- ossvm(Species ~ ., data = iris, probability = TRUE, wf = "rectangular", k = k, scale = FALSE)#
-	set.seed(120)#
-	pred2 <- predict(fit2, newdata = iris[n,], probability = TRUE, decision.values = TRUE)#
-	expect_equal(pred1, pred2)				# not exactly equal
-pred1
-pred2
-all classes, but different order 1#
-	data(iris)#
-	iris[,1:4] <- scale(iris[,1:4])#
-	perm <- 150:1  ## 3, 2, 1#
-	iris <- iris[perm,]#
-	k = 100#
-	n <- 90#
-	x <- as.matrix(iris[,-5])#
-	dist <- sqrt(colSums((t(x) - x[n,])^2))#
-	w <- rectangular(k = k)(dist)#
-	fit1 <- wsvm(Species ~ ., data = iris, case.weights = w/sum(w) * 150, probability = TRUE, scale = FALSE)#
-	set.seed(120)#
-	pred1 <- predict(fit1, newdata = iris[n,], probability = TRUE, decision.values = TRUE)#
-	fit2 <- ossvm(Species ~ ., data = iris, probability = TRUE, wf = "rectangular", k = k, scale = FALSE)#
-	set.seed(120)#
-	pred2 <- predict(fit2, newdata = iris[n,], probability = TRUE, decision.values = TRUE)#
-	expect_equivalent(pred1, pred2)	#
-	expect_equal(attr(pred1, "probabilities"), attr(pred2, "probabilities")[,3:1, drop = FALSE])				# not exactly equal	#
-	expect_equal(as.vector(attr(pred1, "decision.values")), -as.vector(attr(pred2, "decision.values")[,3:1]))
-pred1
-pred2
-all classes, but different order 2#
-	data(iris)#
-	iris[,1:4] <- scale(iris[,1:4])#
-	perm <- c(150:101,1:100)  ## 3, 1, 2#
-	iris <- iris[perm,]#
-	k = 100#
-	n <- 90#
-	x <- as.matrix(iris[,-5])#
-	dist <- sqrt(colSums((t(x) - x[n,])^2))#
-	w <- rectangular(k = k)(dist)#
-	fit1 <- wsvm(Species ~ ., data = iris, case.weights = w/sum(w) * 150, probability = TRUE, scale = FALSE)#
-	set.seed(120)#
-	pred1 <- predict(fit1, newdata = iris[n,], probability = TRUE, decision.values = TRUE)#
-	fit2 <- ossvm(Species ~ ., data = iris, probability = TRUE, wf = "rectangular", k = k, scale = FALSE)#
-	set.seed(120)#
-	pred2 <- predict(fit2, newdata = iris[n,], probability = TRUE, decision.values = TRUE)#
-	expect_equivalent(pred1, pred2)	#
-	expect_equal(attr(pred1, "probabilities"), attr(pred2, "probabilities")[,c(3,1,2), drop = FALSE])	#
-	expect_equivalent(c(1,-1,-1)*attr(pred1, "decision.values")[c(3,1,2)], as.vector(attr(pred2, "decision.values")))
-pred1
-pred2
-data(iris)#
-	iris[,1:4] <- scale(iris[,1:4])#
-	k <- 50#
-	n <- 90#
-	x <- as.matrix(iris[,-5])#
-	dist <- sqrt(colSums((t(x) - x[n,])^2))#
-	w <- rectangular(k = k)(dist)#
-	fit1 <- wsvm(Species ~ ., data = iris, case.weights = w/sum(w) * 150, probability = TRUE, scale = FALSE)#
-	set.seed(120)#
-	pred1 <- predict(fit1, newdata = iris[n,], probability = TRUE, decision.values = TRUE)#
-	fit2 <- ossvm(Species ~ ., data = iris, probability = TRUE, wf = "rectangular", k = k, scale = FALSE)#
-	set.seed(120)#
-	pred2 <- predict(fit2, newdata = iris[n,], probability = TRUE, decision.values = TRUE)#
-	expect_equivalent(pred1, pred2)	#
-	expect_equal(attr(pred1, "probabilities"), attr(pred2, "probabilities")[,colnames(attr(pred1, "probabilities")), drop = FALSE])	#
-	expect_equal(as.numeric(attr(pred1, "decision.values")), attr(pred2, "decision.values")[,!is.na(attr(pred2, "decision.values"))])
-pred1
-pred2
-data(iris)#
-	iris[,1:4] <- scale(iris[,1:4])#
-	perm <- 150:1#
-	iris <- iris[perm,]#
-	k <- 40#
-	n <- 99#
-	x <- as.matrix(iris[,-5])#
-	dist <- sqrt(colSums((t(x) - x[n,])^2))#
-	w <- rectangular(k = k)(dist)#
-	fit1 <- wsvm(Species ~ ., data = iris, case.weights = w/sum(w) * 150, probability = TRUE, scale = FALSE)#
-	set.seed(120)#
-	pred1 <- predict(fit1, newdata = iris[n,], probability = TRUE, decision.values = TRUE)#
-	fit2 <- ossvm(Species ~ ., data = iris, probability = TRUE, wf = "rectangular", k = k, scale = FALSE)#
-	set.seed(120)#
-	pred2 <- predict(fit2, newdata = iris[n,], probability = TRUE, decision.values = TRUE)#
-	expect_equivalent(pred1, pred2)#
-	expect_equal(attr(pred1, "probabilities"), attr(pred2, "probabilities")[,colnames(attr(pred1, "probabilities")), drop = FALSE])	#
-	expect_equal(as.numeric(attr(pred1, "decision.values")), -attr(pred2, "decision.values")[!is.na(attr(pred2, "decision.values"))])
-pred1
-pred2
-2 classes, but different order 2#
-	data(iris)#
-	iris[,1:4] <- scale(iris[,1:4])#
-	perm <- c(150:101,1:100)#
-	iris <- iris[perm,]#
-	k <- 50#
-	n <- 90#
-	x <- as.matrix(iris[,-5])#
-	dist <- sqrt(colSums((t(x) - x[n,])^2))#
-	w <- rectangular(k = k)(dist)#
-	fit1 <- wsvm(Species ~ ., data = iris, case.weights = w/sum(w) * 150, probability = TRUE, scale = FALSE)#
-	set.seed(120)#
-	pred1 <- predict(fit1, newdata = iris[n,], probability = TRUE, decision.values = TRUE)	#
-	fit2 <- ossvm(Species ~ ., data = iris, probability = TRUE, wf = "rectangular", k = k, scale = FALSE)#
-	set.seed(120)#
-	pred2 <- predict(fit2, newdata = iris[n,], probability = TRUE, decision.values = TRUE)	#
-	expect_equivalent(pred1, pred2)#
-	expect_equal(attr(pred1, "probabilities"), attr(pred2, "probabilities")[,colnames(attr(pred1, "probabilities")), drop = FALSE])	#
-	expect_equal(as.numeric(attr(pred1, "decision.values")), attr(pred2, "decision.values")[!is.na(attr(pred2, "decision.values"))])
-pred1
-pred2
-source("/Users/juliaschiffner/Documents/locclass/locClass/skel/inst/tests/test_ossvm.R")
-library(testthat)
-library(locClass)
-set.seed(123)#
-	## NAs in explanatory variables are ok#
-	ran <- sample(1:150,100)#
-	irisna <- iris#
-	irisna[1:17,c(1,3)] <- NA#
-	fit <- mob(Species ~ . | Sepal.Width, data = iris[ran,], model = qdaModel,#
-		control = mob_control(objfun = deviance, minsplit = 30))#
-	## sporadic try-errors in deviance.wqda: covariance singular#
-	pred <- predict(fit, newdata = irisna) #
-	## warnings: kein nicht-fehlendes Argument für max; gebe -Inf zurück#
-	expect_true(all(is.na(pred[1:17])))#
-#
-	## NAs in splitting variable are not ok#
-	irisna[1:17,1:3] <- NA#
-	fit <- mob(Species ~ . | Sepal.Width, data = iris[ran,], model = qdaModel,#
-		control = mob_control(objfun = deviance, minsplit = 30))#
-	## sporadic try-errors in deviance.wqda: covariance singular#
-	expect_error(pred <- predict(fit, newdata = irisna))#
-	## error: VECTOR_ELT() can only be applied to a 'list', not a 'NULL'
