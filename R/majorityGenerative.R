@@ -372,7 +372,7 @@ weights.majorityGenerative <- function (object, ...) {
 model.frame.majorityGenerative <- function (formula, ...) {
 	oc <- formula$call
 	oc$weights <- oc$method <- NULL
-	oc[[1L]] <- as.name("model.frame")
+	oc[[1L]] <- quote(stats::model.frame)
 	if (length(dots <- list(...))) {
 		nargs <- dots[match(c("data", "na.action", "subset"),
 			names(dots), 0)]

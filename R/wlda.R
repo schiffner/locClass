@@ -376,7 +376,7 @@ model.frame.wlda <- function (formula, ...) {
 	oc <- formula$call
 	#m <- match(oc, c("formula", "data"))
 	oc$weights <- oc$method <- oc$wf <- oc$bw <- oc$k <- oc$nn.only <- oc$itr <- NULL
-	oc[[1L]] <- as.name("model.frame")
+	oc[[1L]] <- quote(stats::model.frame)
 	if (length(dots <- list(...))) {
 		nargs <- dots[match(c("data", "na.action", "subset"),
 			names(dots), 0)]

@@ -326,7 +326,7 @@ weights.majority <- function (object, ...) {
 model.frame.majority <- function (formula, ...) {
 	oc <- formula$call
 	oc$weights <- NULL
-	oc[[1L]] <- as.name("model.frame")
+	oc[[1L]] <- quote(stats::model.frame)
 	if (length(dots <- list(...))) {
 		nargs <- dots[match(c("data", "na.action", "subset"),
 			names(dots), 0)]
