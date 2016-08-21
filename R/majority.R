@@ -211,9 +211,11 @@ print.majority <- function(x, ...) {
 
 #' @title Classify Observations with the Majority Classifier
 #'
-#' @description Classify observations in conjunction with \code{\link{majority}}.
+#' @description
+#'  Classify observations in conjunction with \code{\link{majority}}.
 #'
-#' @details This function is a method for the generic function \code{predict()} for class
+#' @details
+#'  This function is a method for the generic function \code{predict()} for class
 #'  \code{"majority"}.
 #'  It can be invoked by calling \code{predict(x)} for an object \code{x} of the
 #'  appropriate class, or directly by calling \code{predict.majority(x)} regardless of
