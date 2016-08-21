@@ -27,7 +27,7 @@ majorityGenerative(x, ...)
 \item{...}{Further arguments.}
 
 \item{formula}{A \code{formula} of the form \code{groups ~ x1 + x2 + \dots}, that is, the response
-is the grouping \code{factor} and the right hand side specifies the (non-\code{factor})
+is the grouping \code{factor} and the right hand side specifies the
 discriminators.}
 
 \item{data}{A \code{data.frame} from which variables specified in \code{formula} are to be taken.}
@@ -36,9 +36,9 @@ discriminators.}
 
 \item{subset}{An index vector specifying the cases to be used in the training sample. (NOTE: If given, this argument must be named.)}
 
-\item{na.action}{A function to specify the action to be taken if NAs are found. The default action is first
-the \code{na.action} setting of \code{\link{options}} and second \code{\link{na.fail}} if that is unset. 
-An alternative is \code{\link{na.omit}}, which leads to rejection of cases with missing values on any required 
+\item{na.action}{A function to specify the action to be taken if \code{NA}'s are found. The default action is first
+the \code{na.action} setting of \code{\link{options}} and second \code{\link{na.fail}} if that is unset.
+An alternative is \code{\link{na.omit}}, which leads to rejection of cases with missing values on any required
 variable. (NOTE: If given, this argument must be named.)}
 
 \item{grouping}{(Required if no \code{formula} is given as principal argument.) A \code{factor} specifying
@@ -52,32 +52,34 @@ An object of class \code{"majorityGenerative"}, a \code{list} containing the fol
   \item{counts}{The number of observations per class.}
   \item{mean}{Weighted estimate of the mean.}
   \item{cov}{Weighted estimate of the covariance matrix.}
-  \item{lev}{The class labels (levels of \code{grouping}).}  
+  \item{lev}{The class labels (levels of \code{grouping}).}
   \item{N}{The number of observations.}
   \item{weights}{The observation weights used in the fitting process.}
-	 \item{method}{The method used for scaling the weighted covariance matrix estimate.}
+  \item{method}{The method used for scaling the weighted covariance matrix estimate.}
   \item{call}{The (matched) function call.}
 }
 \description{
-generative majority classifier
+Computes a classifier that always predicts the class with the highest weighted prior
+ probability and also fits a multivariate normal distribution to the data.
 }
 \details{
-The formulas for the weighted estimates of the mean, the covariance matrix and the class priors are as follows:
+This is a helper function to integrate the majority classifier into mixture models.
+ The formulas for the weighted estimates of the mean, the covariance matrix and the class priors are as follows:
 
-Normalized weights:
-\deqn{w_n^* = \frac{w_n}{\sum_n w_n}}{w_n* = w_n/(sum_n w_n)}
-Weighted means:
-\deqn{\bar x = \sum_n w_n^* x_n}{bar x = sum_n w_n* x_i}
-Weighted covariance matrix:
-\code{method = "ML"}:
-\deqn{S = \sum_n w_n^* (x_n - \bar x)(x_n - \bar x)'}{S = sum_n w_n* (x_n - bar x)(x_n - bar x)'}
-\code{method = "unbiased"}:
-\deqn{S = \frac{\sum_n w_n^* (x_n - \bar x)(x_n - \bar x)'}{1 - \sum_n w_n^{*2}}}{S = (sum_n w_n* (x_n - bar x)(x_n - bar x)')/(1 - sum_n (w_n*)^2)}
-Weighted prior probabilities:
-\deqn{p_g = \frac{\sum_{n:y_n=g} w_n}{\sum_n w_n}}{p_g = \sum_{n:y_n=g} w_n/(\sum_n w_n)}
+ Normalized weights:
+ \deqn{w_n^* = \frac{w_n}{\sum_n w_n}}{w_n* = w_n/(sum_n w_n)}
+ Weighted means:
+ \deqn{\bar x = \sum_n w_n^* x_n}{bar x = sum_n w_n* x_i}
+ Weighted covariance matrix:
+ \code{method = "ML"}:
+ \deqn{S = \sum_n w_n^* (x_n - \bar x)(x_n - \bar x)'}{S = sum_n w_n* (x_n - bar x)(x_n - bar x)'}
+ \code{method = "unbiased"}:
+ \deqn{S = \frac{\sum_n w_n^* (x_n - \bar x)(x_n - \bar x)'}{1 - \sum_n w_n^{*2}}}{S = (sum_n w_n* (x_n - bar x)(x_n - bar x)')/(1 - sum_n (w_n*)^2)}
+ Weighted prior probabilities:
+ \deqn{p_g = \frac{\sum_{n:y_n=g} w_n}{\sum_n w_n}}{p_g = \sum_{n:y_n=g} w_n/(\sum_n w_n)}
 
-If the predictor variables include factors, the formula interface must be used in order 
-to get a correct model matrix.
+ If the predictor variables include factors, the formula interface must be used in order
+ to get a correct model matrix.
 }
 \examples{
 library(mlbench)
@@ -85,33 +87,17 @@ data(PimaIndiansDiabetes)
 
 train <- sample(nrow(PimaIndiansDiabetes), 500)
 
-# weighting observations from classes pos and neg according to their 
+# weighting observations from classes pos and neg according to their
 # frequency in the data set:
 ws <- as.numeric(1/table(PimaIndiansDiabetes$diabetes)
     [PimaIndiansDiabetes$diabetes])
 
-fit <- majorityGenerative(diabetes ~ ., data = PimaIndiansDiabetes, weights = ws, 
+fit <- majorityGenerative(diabetes ~ ., data = PimaIndiansDiabetes, weights = ws,
     subset = train)
 pred <- predict(fit, newdata = PimaIndiansDiabetes[-train,])
 mean(pred$class != PimaIndiansDiabetes$diabetes[-train])
 }
 \seealso{
-Other majority: \code{\link{majority}},
-  \code{\link{predict.majorityGenerative}},
-  \code{\link{predict.majority}}
-
-Other majority: \code{\link{majority}},
-  \code{\link{predict.majorityGenerative}},
-  \code{\link{predict.majority}}
-
-Other majority: \code{\link{majority}},
-  \code{\link{predict.majorityGenerative}},
-  \code{\link{predict.majority}}
-
-Other majority: \code{\link{majority}},
-  \code{\link{predict.majorityGenerative}},
-  \code{\link{predict.majority}}
-
 Other majority: \code{\link{majority}},
   \code{\link{predict.majorityGenerative}},
   \code{\link{predict.majority}}

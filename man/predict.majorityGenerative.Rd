@@ -28,11 +28,11 @@ A \code{list} with components:
 Classify observations in conjunction with \code{\link{majorityGenerative}}.
 }
 \details{
-This function is a method for the generic function \code{predict()} for class 
-\code{"majorityGenerative"}. 
-It can be invoked by calling \code{predict(x)} for an object \code{x} of the 
-appropriate class, or directly by calling \code{predict.majorityGenerative(x)} regardless of 
-the class of the object.
+This function is a method for the generic function \code{predict()} for class
+ \code{"majorityGenerative"}.
+ It can be invoked by calling \code{predict(x)} for an object \code{x} of the
+ appropriate class, or directly by calling \code{predict.majorityGenerative(x)} regardless of
+ the class of the object.
 }
 \examples{
 library(mlbench)
@@ -40,12 +40,12 @@ data(PimaIndiansDiabetes)
 
 train <- sample(nrow(PimaIndiansDiabetes), 500)
 
-# weighting observations from classes pos and neg according to their 
+# weighting observations from classes pos and neg according to their
 # frequency in the data set:
 ws <- as.numeric(1/table(PimaIndiansDiabetes$diabetes)
     [PimaIndiansDiabetes$diabetes])
 
-fit <- wmajorityGenerative(diabetes ~ ., data = PimaIndiansDiabetes, weights = ws, 
+fit <- majorityGenerative(diabetes ~ ., data = PimaIndiansDiabetes, weights = ws,
     subset = train)
 pred <- predict(fit, newdata = PimaIndiansDiabetes[-train,])
 mean(pred$class != PimaIndiansDiabetes$diabetes[-train])
